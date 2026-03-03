@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <random>
 #include <bitset>
+#include <climits>
 
 #include "boop/util/util.h"
-#include "vec_ops.h"
+#include "boop/rrr/simulator/vec_ops.h"
 
 BOOP_HEADER_START
 
@@ -43,6 +44,7 @@ namespace boop {
   private:
     // aliases
     using Word = unsigned long long;
+    static constexpr int WordWidth = CHAR_BIT * sizeof(Word);
     using itr = std::vector<Word>::iterator;
     using citr = std::vector<Word>::const_iterator;
     static constexpr Word one = 0xffffffffffffffffull;
@@ -228,6 +230,196 @@ namespace boop {
       assert(0);
     }
     return false;
+  }
+  
+  // cex
+
+  template <typename Ntk>
+  void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
+    if(par_.nVerbose) {
+      std::stringstream ss;
+      for(VarValue c : vCex) {
+        ss << GetVarValueChar(c);
+      }
+      Print(0, "cex:", ss.str());
+    }
+    // record care PI indices
+    assert(int_size(vCex) == pNtk_->GetNumPis());
+    std::vector<int> vCarePiIdxs;
+    for(int nIdx = 0; nIdx < pNtk_->GetNumPis(); nIdx++) {
+      if(vCex[nIdx] == rrrTRUE || vCex[nIdx] == rrrFALSE) {
+        vCarePiIdxs.push_back(nIdx);
+      }
+    }
+    assert(!vCarePiIdxs.empty());
+    // find compatible word
+    int nWord = 0;
+    std::vector<Word> vCompatibleBits(1);
+    auto it = vCompatibleBits.begin();
+    for(; nWord < nWords_; nWord++) {
+      vec_ops::Fill(1, it);
+      for(int nIdx : vCarePiIdxs) {
+        int nId = pNtk_->GetPi(nIdx);
+        bool fCompl = (vCex[nIdx] == rrrFALSE);
+        auto itX = vValues_.begin() + nId * nWords_ + nWord;
+        auto itY = vAssignedStimuli_.begin() + nIdx * nWords_ + nWord;
+        vec_ops::And(1, vTmp_.begin(), itX, itY, !fCompl, false);
+        vec_ops::And(1, it, it, vTmp_.begin(), false, true);
+        if(vec_ops::IsZero(1, it, false)) {
+          break;
+        }
+      }
+      if(!vec_ops::IsZero(1, it, false)) {
+        break;
+      }
+    }
+    // find compatible bit
+    int nBit;
+    if(nWord < nWords_) {
+      assert(!vec_ops::IsZero(1, it, false));
+      nBit = 0;
+      while(!((*it >> nBit) & 1)) {
+        nBit++;
+      }
+      Print(0, "fusing into stimulus word", nWord, "bit", nBit);
+      vPackedCount_[nWord * WordWidth + nBit]++;
+    } else {
+      // no bits are compatible, so reset at pivot
+      nWord = nPivot_ / WordWidth;
+      nBit = nPivot_ % WordWidth;
+      Print(0, "resetting stimulus word", nWord, "bit", nBit);
+      if(vPackedCount_[nWord * WordWidth + nBit]) {
+        // this can be zero only when stats has been reset
+        vPackedCountEvicted_.push_back(vPackedCount_[nWord * WordWidth + nBit]);
+      }
+      vPackedCount_[nWord * WordWidth + nBit] = 1;
+      Word mask = Word{1} << nBit;
+      for(int nIdx = 0; nIdx < pNtk_->GetNumPis(); nIdx++) {
+        vAssignedStimuli_[nIdx * nWords_ + nWord] &= ~mask;
+      }
+      nPivot_++;
+      if(nPivot_ == WordWidth * nWords_) {
+        nPivot_ = 0;
+      }
+    }
+    // update stimulus
+    for(int nIdx : vCarePiIdxs) {
+      int nId = pNtk_->GetPi(nIdx);
+      Word mask = Word{1} << nBit;
+      if(vCex[nIdx] == rrrTRUE) {
+        vValues_[nId * nWords_ + nWord] |= mask;
+      } else {
+        assert(vCex[nIdx] == rrrFALSE);
+        vValues_[nId * nWords_ + nWord] &= ~mask;
+      }
+      vAssignedStimuli_[nIdx * nWords_ + nWord] |= mask;
+      Print(1, "node", nId);
+      PrintBits(2, 1, vValues_.begin() + nId * nWords_ + nWord);
+      Print(1, "asgn", nId);
+      PrintBits(2, 1, vAssignedStimuli_.begin() + nIdx * nWords_ + nWord);
+    }
+    // simulate
+    SimulateOneWord(nWord);
+    // recompute care with new stimulus
+    if(nTarget_ != -1 && !pNtk_->IsPoDriver(nTarget_)) {
+      TimePoint timeStart = GetCurrentTime();
+      Print(0, "recomputing careset of", nTarget_);
+      vValuesInv_.resize(nWords_ * pNtk_->GetNumNodes());
+      StartTraversal();
+      vec_ops::Copy(1, vValuesInv_.begin() + nTarget_ * nWords_ + nWord, vValues_.begin() + nTarget_ * nWords_ + nWord, true);
+      vTrav_[nTarget_] = iTrav_;
+      pNtk_->ForEachTfo(nTarget_, false, [&](int nId) {
+        auto itX = vValuesInv_.end();
+        auto itY = vValuesInv_.begin() + nId * nWords_ + nWord;
+        bool fComplX = false;
+        switch(pNtk_->GetNodeType(nId)) {
+        case AND:
+          pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
+            if(itX == vValuesInv_.end()) {
+              if(vTrav_[nFi] != iTrav_) {
+                itX = vValues_.begin() + nFi * nWords_ + nWord;
+              } else {
+                itX = vValuesInv_.begin() + nFi * nWords_ + nWord;
+              }
+              fComplX = fCompl;
+            } else {
+              if(vTrav_[nFi] != iTrav_) {
+                vec_ops::And(1, itY, itX, vValues_.begin() + nFi * nWords_ + nWord, fComplX, fCompl);
+              } else {
+                vec_ops::And(1, itY, itX, vValuesInv_.begin() + nFi * nWords_ + nWord, fComplX, fCompl);
+              }
+              itX = itY;
+              fComplX = false;
+            }
+          });
+          if(itX == vValuesInv_.end()) {
+            vec_ops::Fill(1, itY);
+          } else if(itX != itY) {
+            vec_ops::Copy(1, itY, itX, fComplX);
+          }
+          break;
+        default:
+          assert(0);
+        }
+        vTrav_[nId] = iTrav_;
+        Print(1, "node", nId);
+        PrintBits(2, 1, vValuesInv_.begin() + nId * nWords_ + nWord);
+      });
+      vec_ops::Clear(1, vCare_.begin() + nWord);
+      pNtk_->ForEachPoDriver([&](int nFi) {
+        assert(nFi != nTarget_);
+        if(vTrav_[nFi] == iTrav_) { // skip unaffected POs
+          vCare_[nWord] |= (vValues_[nFi * nWords_ + nWord] ^ vValuesInv_[nFi * nWords_ + nWord]);
+        }
+      });
+      Print(1, "care", nTarget_);
+      PrintBits(2, 1, vCare_.begin() + nWord);
+      durationCare_ += Duration(timeStart, GetCurrentTime());
+    }    
+    nCex_++;
+  }
+
+  // summary
+  
+  template <typename Ntk>
+  void Simulator<Ntk>::ResetSummary() {
+    nCex_ = 0;
+    nDiscarded_ = 0;
+    nPackedCountOld_ = 0;
+    for(int nCount : vPackedCount_) {
+      if(nCount) {
+        nPackedCountOld_++;
+      }
+    }
+    vPackedCountEvicted_.clear();
+    durationSimulation_ = 0;
+    durationCare_ = 0;
+  }
+  
+  template <typename Ntk>
+  Summary<int> Simulator<Ntk>::GetStatsSummary() const {
+    Summary<int> summary;
+    summary.emplace_back("sim cex", nCex_);
+    if(!par_.fKeepStimuli) {
+      summary.emplace_back("sim discarded cex", nDiscarded_);
+    }
+    int nPackedCount = int_size(vPackedCountEvicted_) - nPackedCountOld_;
+    for(int nCount : vPackedCount_) {
+      if(nCount) {
+        nPackedCount++;
+      }
+    }
+    summary.emplace_back("sim packed pattern", nPackedCount);
+    summary.emplace_back("sim evicted pattern", int_size(vPackedCountEvicted_));
+    return summary;
+  }
+
+  template <typename Ntk>
+  Summary<Duration> Simulator<Ntk>::GetTimesSummary() const {
+    Summary<Duration> summary;
+    summary.emplace_back("sim simulation", durationSimulation_);
+    summary.emplace_back("sim care computation", durationCare_);
+    return summary;
   }
   
   // print
@@ -647,7 +839,7 @@ namespace boop {
         }
       }
       vPackedCount_.clear();
-      vPackedCount_.resize(nWords_ * 64);
+      vPackedCount_.resize(nWords_ * WordWidth);
       fGenerated_ = true;
     } else {
       // use same nWords_ as we are reusing patterns even if par_.nWords changed
@@ -775,201 +967,7 @@ namespace boop {
   void Simulator<Ntk>::PopBack() {
     vBackups_.pop_back();
   }
-  
 
-
-  /* {{{ Cex */
-
-  template <typename Ntk>
-  void Simulator<Ntk>::AddCex(std::vector<VarValue> const &vCex) {
-    if(par.nVerbose) {
-      std::cout << "cex: ";
-      for(VarValue c: vCex) {
-        std::cout << GetVarValueChar(c);
-      }
-      std::cout << std::endl;
-    }
-    // record care pi indices
-    assert(int_size(vCex) == pNtk->GetNumPis());
-    std::vector<int> vCarePiIdxs;
-    for(int idx = 0; idx < pNtk->GetNumPis(); idx++) {
-      switch(vCex[idx]) {
-      case rrrTRUE:
-        vCarePiIdxs.push_back(idx);
-        break;
-      case rrrFALSE:
-        vCarePiIdxs.push_back(idx);
-        break;
-      default:
-        break;
-      }
-    }
-    assert(!vCarePiIdxs.empty());
-    // find compatible word
-    int iWord = 0;
-    std::vector<word> vCompatibleBits(1);
-    itr it = vCompatibleBits.begin();
-    for(; iWord < nWords; iWord++) {
-      Fill(1, it);
-      for(int idx: vCarePiIdxs) {
-        int id = pNtk->GetPi(idx);
-        bool c;
-        if(vCex[idx] == rrrTRUE) {
-          c = false;
-        } else {
-          assert(vCex[idx] == rrrFALSE);
-          c = true;
-        }
-        itr x = vValues.begin() + id * nWords + iWord;
-        itr y = vAssignedStimuli.begin() + idx * nWords + iWord;
-        And(1, tmp.begin(), x, y, !c, false);
-        And(1, it, it, tmp.begin(), false, true);
-        if(IsZero(1, it)) {
-          break;
-        }
-      }
-      if(!IsZero(1, it)) {
-        break;
-      }
-    }
-    // find compatible bit
-    int iBit;
-    if(iWord < nWords) {
-      assert(!IsZero(1, it));
-      iBit = 0;
-      while(!((*it >> iBit) & 1)) {
-        iBit++;
-      }
-      if(par.nVerbose) {
-        std::cout << "fusing into stimulus word " << iWord << " bit " << iBit << std::endl;
-      }
-      vPackedCount[iWord * 64 + iBit]++;
-    } else {
-      // no bits are compatible, so reset at pivot
-      iWord = iPivot / 64;
-      iBit = iPivot % 64;
-      if(par.nVerbose) {
-        std::cout << "resetting stimulus word " << iWord << " bit " << iBit << std::endl;
-      }
-      if(vPackedCount[iWord * 64 + iBit]) {
-        // this can be zero only when stats has been reset
-        vPackedCountEvicted.push_back(vPackedCount[iWord * 64 + iBit]);
-      }
-      vPackedCount[iWord * 64 + iBit] = 1;
-      word mask = 1ull << iBit;
-      for(int idx = 0; idx < pNtk->GetNumPis(); idx++) {
-        vAssignedStimuli[idx * nWords + iWord] &= ~mask;
-      }
-      iPivot++;
-      if(iPivot == 64 * nWords) {
-        iPivot = 0;
-      }
-    }
-    // update stimulus
-    for(int idx: vCarePiIdxs) {
-      int id = pNtk->GetPi(idx);
-      word mask = 1ull << iBit;
-      if(vCex[idx] == rrrTRUE) {
-        vValues[id * nWords + iWord] |= mask;
-      } else {
-        assert(vCex[idx] == rrrFALSE);
-        vValues[id * nWords + iWord] &= ~mask;
-      }
-      vAssignedStimuli[idx * nWords + iWord] |= mask;
-      if(par.nVerbose) {
-        std::cout << "node " << std::setw(3) << id << ": ";
-        Print(1, vValues.begin() + id * nWords + iWord);
-        std::cout << std::endl;
-        std::cout << "asgn " << std::setw(3) << id << ": ";
-        Print(1, vAssignedStimuli.begin() + idx * nWords + iWord);
-        std::cout << std::endl;
-      }
-    }
-    // simulate
-    SimulateOneWord(iWord);
-    // recompute care with new stimulus
-    time_point timeStart = GetCurrentTime();
-    if(target != -1 && !pNtk->IsPoDriver(target)) {
-      if(par.nVerbose) {
-        std::cout << "recomputing careset of " << target << std::endl;
-      }
-      vValues2.resize(vValues.size());
-      pNtk->ForEachPi([&](int id) {
-        vValues2[id * nWords + iWord] = vValues[id * nWords + iWord];
-      });
-      pNtk->ForEachInt([&](int id) {
-        vValues2[id * nWords + iWord] = vValues[id * nWords + iWord];
-      });
-      pNtk->ForEachTfo(target, false, [&](int id) {
-        SimulateOneWordNode(vValues2, id, iWord, target);
-        if(par.nVerbose) {
-          std::cout << "node " << std::setw(3) << id << ": ";
-          Print(1, vValues2.begin() + id * nWords + iWord);
-          std::cout << std::endl;
-        }
-      });
-      Clear(1, care.begin() + iWord);
-      pNtk->ForEachPoDriver([&](int fi) {
-        assert(fi != target);
-        care[iWord] = care[iWord] | (vValues[fi * nWords + iWord] ^ vValues2[fi * nWords + iWord]);
-      });
-      if(par.nVerbose) {
-        std::cout << "care " << std::setw(3) << target << ": ";
-        Print(1, care.begin() + iWord);
-        std::cout << std::endl;
-      }
-    }
-    durationCare += Duration(timeStart, GetCurrentTime());
-    nCex++;
-  }
-  
-  /* }}} */
-
-  /* {{{ Summary */
-  
-  template <typename Ntk>
-  void Simulator<Ntk>::ResetSummary() {
-    nCex = 0;
-    nDiscarded = 0;
-    nPackedCountOld = 0;
-    for(int count: vPackedCount) {
-      if(count) {
-        nPackedCountOld++;
-      }
-    }
-    vPackedCountEvicted.clear();
-    durationSimulation = 0;
-    durationCare = 0;
-  };
-  
-  template <typename Ntk>
-  summary<int> Simulator<Ntk>::GetStatsSummary() const {
-    summary<int> v;
-    v.emplace_back("sim cex", nCex);
-    if(!fKeepStimula) {
-      v.emplace_back("sim discarded cex", nDiscarded);
-    }
-    int nPackedCount = vPackedCountEvicted.size() - nPackedCountOld;
-    for(int count: vPackedCount) {
-      if(count) {
-        nPackedCount++;
-      }
-    }
-    v.emplace_back("sim packed pattern", nPackedCount);
-    v.emplace_back("sim evicted pattern", vPackedCountEvicted.size());
-    return v;
-  };
-  
-  template <typename Ntk>
-  summary<double> Simulator<Ntk>::GetTimesSummary() const {
-    summary<double> v;
-    v.emplace_back("sim simulation", durationSimulation);
-    v.emplace_back("sim care computation", durationCare);
-    return v;
-  };
-  
-  /* }}} */
-  
 } // namespace boop
 
 BOOP_HEADER_END

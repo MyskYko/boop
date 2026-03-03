@@ -153,7 +153,7 @@ namespace boop::vec_ops {
   template <typename It, typename T>
   inline std::stringstream GetStringStream(int n, It it, T mask) {
     constexpr std::size_t nBits = sizeof(typename std::iterator_traits<It>::value_type) * CHAR_BIT;
-    std::stringstream ss = GetBitsDescription(n - 1, it);
+    std::stringstream ss = GetStringStream(n - 1, it);
     if(n <= 0) {
       return ss;
     }
@@ -161,7 +161,7 @@ namespace boop::vec_ops {
       ss << "\n";
     }
     std::advance(it, n - 1);
-    ss  << std::bitset<nBits>((*it) & mask);
+    ss << std::bitset<nBits>((*it) & mask);
     return ss;
   }
 
