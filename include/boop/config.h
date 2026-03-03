@@ -1,0 +1,19 @@
+#pragma once
+
+// Threading
+#if defined(ABC_USE_PTHREADS) && !defined(BOOP_USE_THREADS)
+#define BOOP_USE_THREADS
+#endif
+
+// namespace compatibility
+#ifdef ABC_NAMESPACE_HEADER_START
+#define BOOP_HEADER_START ABC_NAMESPACE_HEADER_START
+#define BOOP_HEADER_END   ABC_NAMESPACE_HEADER_END
+#define BOOP_IMPL_START   ABC_NAMESPACE_IMPL_START
+#define BOOP_IMPL_END     ABC_NAMESPACE_IMPL_END
+#else
+#define BOOP_HEADER_START
+#define BOOP_HEADER_END
+#define BOOP_IMPL_START
+#define BOOP_IMPL_END
+#endif
