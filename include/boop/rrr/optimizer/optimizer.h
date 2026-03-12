@@ -12,7 +12,7 @@
 
 BOOP_HEADER_START
 
-namespace boop {
+namespace boop::rrr {
 
   // NOTE: it is assumed that trivial collapse/decompose does not change cost,
   //       and trivial fanin ordering change may happen even with fChanged = false
@@ -375,7 +375,7 @@ namespace boop {
 
   template <typename Ntk, typename Ana>
   template <typename... Args>
-  inline void Optimizer<Ntk, Ana>::Print(int nVerboseLevel, Args &&...args) {
+  void Optimizer<Ntk, Ana>::Print(int nVerboseLevel, Args &&...args) {
     if(fnPrintLine_ && par_.nVerbose > nVerboseLevel) {
       std::stringstream ss;
       for(int i = 0; i < nVerboseLevel; i++) {
@@ -443,7 +443,7 @@ namespace boop {
   // topology
 
   template <typename Ntk, typename Ana>
-  inline void Optimizer<Ntk, Ana>::MarkTfo(int nId) {
+  void Optimizer<Ntk, Ana>::MarkTfo(int nId) {
     // includes itself
     if(nId == nTarget_) {
       return;
@@ -460,7 +460,7 @@ namespace boop {
   // time
 
   template <typename Ntk, typename Ana>
-  inline bool Optimizer<Ntk, Ana>::Timeout() {
+  bool Optimizer<Ntk, Ana>::Timeout() {
     if(nTimeout_) {
       if(DurationInSeconds(timeStart_, GetCurrentTime()) > nTimeout_) {
         return true;
@@ -472,7 +472,7 @@ namespace boop {
   // sort fanins
 
   template <typename Ntk, typename Ana>
-  inline void Optimizer<Ntk, Ana>::SetRandPiOrder() {
+  void Optimizer<Ntk, Ana>::SetRandPiOrder() {
     if(int_size(vRandPiOrder_) != pNtk_->GetNumPis()) {
       vRandPiOrder_.clear();
       vRandPiOrder_.resize(pNtk_->GetNumPis());
@@ -482,7 +482,7 @@ namespace boop {
   }
 
   template <typename Ntk, typename Ana>
-  inline void Optimizer<Ntk, Ana>::SetRandCosts() {
+  void Optimizer<Ntk, Ana>::SetRandCosts() {
     std::uniform_real_distribution<> dis(std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max());
     while(int_size(vRandCosts_) < pNtk_->GetNumNodes()) {
       vRandCosts_.push_back(dis(rng_));
@@ -490,7 +490,7 @@ namespace boop {
   }
 
   template <typename Ntk, typename Ana>
-  inline void Optimizer<Ntk, Ana>::SortFanins(int nId) {
+  void Optimizer<Ntk, Ana>::SortFanins(int nId) {
     switch(nSortType) {
     case 0: // no sorting
       break;
@@ -719,7 +719,7 @@ namespace boop {
   }
 
   template <typename Ntk, typename Ana>
-  inline void Optimizer<Ntk, Ana>::SortFanins() {
+  void Optimizer<Ntk, Ana>::SortFanins() {
     pNtk_->ForEachInt([&](int nId) {
       SortFanins(nId);
     });
@@ -728,7 +728,7 @@ namespace boop {
   // remove fanins
 
   template <typename Ntk, typename Ana>
-  inline bool Optimizer<Ntk, Ana>::RemoveRedundantFanins(int nId, bool fRemoveUnused) {
+  bool Optimizer<Ntk, Ana>::RemoveRedundantFanins(int nId, bool fRemoveUnused) {
     assert(pNtk_->GetNumFanouts(nId) > 0);
     bool fReduced = false;
     for(int nIdx = 0; nIdx < pNtk_->GetNumFanins(nId); nIdx++) {
@@ -752,7 +752,7 @@ namespace boop {
   }
   
   template <typename Ntk, typename Ana>
-  inline bool Optimizer<Ntk, Ana>::RemoveRedundantFaninsRandom(int nId, bool fRemoveUnused) {
+  bool Optimizer<Ntk, Ana>::RemoveRedundantFaninsRandom(int nId, bool fRemoveUnused) {
     assert(pNtk_->GetNumFanouts(nId) > 0);
     bool fReduced = false;
     vTmp_.resize(pNtk_->GetNumFanins(nId));
@@ -1467,6 +1467,6 @@ namespace boop {
     }
   }
 
-} // namespace boop
+} // namespace boop::rrr
 
 BOOP_HEADER_END

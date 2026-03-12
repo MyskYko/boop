@@ -10,7 +10,7 @@
 
 BOOP_HEADER_START
 
-namespace boop {
+namespace boop::rrr {
 
   template <typename Ntk>
   class Simulator {
@@ -531,7 +531,7 @@ namespace boop {
   // topology
   
   template <typename Ntk>
-  inline unsigned Simulator<Ntk>::StartTraversal(int n) {
+  unsigned Simulator<Ntk>::StartTraversal(int n) {
     do {
       for(int i = 0; i < n; i++) {
         iTrav_++;
@@ -968,6 +968,6 @@ namespace boop {
     vBackups_.pop_back();
   }
 
-} // namespace boop
+} // namespace boop::rrr
 
 BOOP_HEADER_END

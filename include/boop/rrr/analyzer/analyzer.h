@@ -4,15 +4,15 @@
 
 BOOP_HEADER_START
 
-namespace boop {
+namespace boop::rrr {
 
-  template <typename Ntk, typename Sim, typename Sol>
+  template <typename Ntk, typename Sim, typename Sat>
   class Analyzer {
   public:
     struct Parameter {
       int nVerbose = 0;
       typename Sim::Parameter parSim;
-      typename Sol::Parameter parSol;
+      typename Sat::Parameter parSat;
     };
 
   public:
@@ -35,7 +35,7 @@ namespace boop {
     const Parameter par_;
     std::function<void(const std::string &)> fnPrintLine_;
     Sim sim_;
-    Sol sol_;
+    Sat sat_;
 
     // print
     template<typename... Args>
@@ -44,32 +44,32 @@ namespace boop {
 
   // lifecycle
 
-  template <typename Ntk, typename Sim, typename Sol>
-  Analyzer<Ntk, Sim, Sol>::Analyzer(const Parameter &par)
+  template <typename Ntk, typename Sim, typename Sat>
+  Analyzer<Ntk, Sim, Sat>::Analyzer(const Parameter &par)
     : pNtk_(nullptr),
       par_(par),
       sim_(par.parSim),
-      sol_(par.parSol) {
+      sat_(par.parSat) {
   }
   
-  template <typename Ntk, typename Sim, typename Sol>
-  void Analyzer<Ntk, Sim, Sol>::AssignNetwork(Ntk *pNtk, bool fReuse) {
+  template <typename Ntk, typename Sim, typename Sat>
+  void Analyzer<Ntk, Sim, Sat>::AssignNetwork(Ntk *pNtk, bool fReuse) {
     pNtk_ = pNtk;
     sim_.AssignNetwork(pNtk_, fReuse);
-    sol_.AssignNetwork(pNtk_, fReuse);
+    sat_.AssignNetwork(pNtk_, fReuse);
   }
 
-  template <typename Ntk, typename Sim, typename Sol>
-  void Analyzer<Ntk, Sim, Sol>::SetPrintLine(std::function<void(const std::string &)> fnPrintLine) {
+  template <typename Ntk, typename Sim, typename Sat>
+  void Analyzer<Ntk, Sim, Sat>::SetPrintLine(std::function<void(const std::string &)> fnPrintLine) {
     sim_.SetPrintLine(fnPrintLine);
-    sol_.SetPrintLine(fnPrintLine);
+    sat_.SetPrintLine(fnPrintLine);
     fnPrintLine_ = std::move(fnPrintLine);
   }
 
   // checks
 
-  template <typename Ntk, typename Sim, typename Sol>
-  bool Analyzer<Ntk, Sim, Sol>::CheckRedundancy(int nId, int nIdx) {
+  template <typename Ntk, typename Sim, typename Sat>
+  bool Analyzer<Ntk, Sim, Sat>::CheckRedundancy(int nId, int nIdx) {
     if(!sim_.CheckRedundancy(nId, nIdx)) {
       Print(1, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "not redundant");
       return false;
@@ -78,22 +78,22 @@ namespace boop {
     if(sim_.IsExhaustive()) {
       return true;
     }
-    SatResult r = sol_.CheckRedundancy(nId, nIdx);
+    SatResult r = sat_.CheckRedundancy(nId, nIdx);
     if(r == UNSAT) {
       Print(0, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "redundant");
       return true;
     }
     if(r == SAT) {
       Print(0, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "NOT redundant");
-      sim_.AddCex(sol_.GetCex());
+      sim_.AddCex(sat_.GetCex());
       return false;
     }
     Print(0, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "undetermined");
     return false;
   }
   
-  template <typename Ntk, typename Sim, typename Sol>
-  bool Analyzer<Ntk, Sim, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
+  template <typename Ntk, typename Sim, typename Sat>
+  bool Analyzer<Ntk, Sim, Sat>::CheckFeasibility(int nId, int nFi, bool fCompl) {
     if(!sim_.CheckFeasibility(nId, nFi, fCompl)) {
       Print(1, "node", nId, ",", "fanin", fCompl, nFi, ":", "not feasible");
       return false;
@@ -102,14 +102,14 @@ namespace boop {
     if(sim_.IsExhaustive()) {
       return true;
     }
-    SatResult r = sol_.CheckFeasibility(nId, nFi, fCompl);
+    SatResult r = sat_.CheckFeasibility(nId, nFi, fCompl);
     if(r == UNSAT) {
       Print(0, "node", nId, ",", "fanin", fCompl, nFi, ":", "feasible");
       return true;
     }
     if(r == SAT) {
       Print(0, "node", nId, ",", "fanin", fCompl, nFi, ":", "NOT feasible");
-      sim_.AddCex(sol_.GetCex());
+      sim_.AddCex(sat_.GetCex());
       return false;
     }
     Print(0, "node", nId, ",", "fanin", fCompl, nFi, ":", "undetermined");
@@ -118,33 +118,33 @@ namespace boop {
 
   // summary
 
-  template <typename Ntk, typename Sim, typename Sol>
-  void Analyzer<Ntk, Sim, Sol>::ResetSummary() {
+  template <typename Ntk, typename Sim, typename Sat>
+  void Analyzer<Ntk, Sim, Sat>::ResetSummary() {
     sim_.ResetSummary();
-    sol_.ResetSummary();
+    sat_.ResetSummary();
   }
 
-  template <typename Ntk, typename Sim, typename Sol>
-  Summary<int> Analyzer<Ntk, Sim, Sol>::GetStatsSummary() const {
+  template <typename Ntk, typename Sim, typename Sat>
+  Summary<int> Analyzer<Ntk, Sim, Sat>::GetStatsSummary() const {
     Summary<int> summary = sim_.GetStatsSummary();
-    Summary<int> summary2 = sol_.GetStatsSummary();
+    Summary<int> summary2 = sat_.GetStatsSummary();
     summary.insert(summary.end(), summary2.begin(), summary2.end());
     return summary;
   }
 
-  template <typename Ntk, typename Sim, typename Sol>
-  Summary<Duration> Analyzer<Ntk, Sim, Sol>::GetTimesSummary() const {
+  template <typename Ntk, typename Sim, typename Sat>
+  Summary<Duration> Analyzer<Ntk, Sim, Sat>::GetTimesSummary() const {
     Summary<Duration> summary = sim_.GetTimesSummary();
-    Summary<Duration> summary2 = sol_.GetTimesSummary();
+    Summary<Duration> summary2 = sat_.GetTimesSummary();
     summary.insert(summary.end(), summary2.begin(), summary2.end());
     return summary;
   }
   
   // print
 
-  template <typename Ntk, typename Sim, typename Sol>
+  template <typename Ntk, typename Sim, typename Sat>
   template <typename... Args>
-  inline void Analyzer<Ntk, Sim, Sol>::Print(int nVerboseLevel, Args &&...args) {
+  void Analyzer<Ntk, Sim, Sat>::Print(int nVerboseLevel, Args &&...args) {
     if(fnPrintLine_ && par_.nVerbose > nVerboseLevel) {
       std::stringstream ss;
       for(int i = 0; i < nVerboseLevel; i++) {
@@ -155,6 +155,6 @@ namespace boop {
     }
   }
   
-} // namespace boop
+} // namespace boop::rrr
 
 BOOP_HEADER_END
