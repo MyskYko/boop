@@ -5,9 +5,22 @@
 
 #include "boop/util/util.h"
 
+BOOP_HEADER_START
+
 namespace boop::solver {
 
-  template <class Solver, bool kDirect = false>
+  enum class AmoMethod {
+    Pairwise,
+    Bimander,
+  };
+
+  enum class AmkMethod {
+    PwNet,
+    OddEvenSel4,
+    PairwiseSel,
+  };
+
+  template <class Solver, bool kDirect = false, AmoMethod kAmoMethod = AmoMethod::Bimander, int kBimSize = 2, AmkMethod kAmkMethod = AmkMethod::OddEvenSel4>
   class CardinalityEncoder {
   public:
     // lifecycle
@@ -17,142 +30,208 @@ namespace boop::solver {
     void AtMostOne(const std::vector<int> &vLits);
     void Onehot(const std::vector<int> &vLits);
     void AtMostK(const std::vector<int> &vLits, int k);
-
-    // at most one
-    void Pairwise(const std::vector<int> &vLits);
-    void Bimander(const std::vector<int> &vLits, int nBim);
-    
-    // at most k
-    void PwNet(std::vector<int> vLits, std::vector<int> &vRes);
-    void OddEvenSel4(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
-    void PairwiseSel(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
   
   private:
     Solver &solver_;
 
+    // alias
+    int Compl(int nLit);
+
+    // toggle
+    void AtMostOneInt(const std::vector<int> &vLits);
+    void AtMostKInt(const std::vector<int> &vLits, int k);
+    
     // helper
     void CheckNoConstants(const std::vector<int> &vLits);
-    void Comparator2(int x1, int x2, int y1, int y2);
+    void Comparator(int nIn1, int nIn2, int &nOut1, int &nOut2);
+    void Comparator2(int nIn1, int nIn2, int nOut1, int nOut2);
+    
+    // at most one
+    void Pairwise(const std::vector<int> &vLits);
+    void Bimander(const std::vector<int> &vLits, int nBim);
 
     // pw
-    void Comparator(int a, int b, int &c, int &d);
     void PwSplit(const std::vector<int> &vLits, std::vector<int> &v1, std::vector<int> &v2);
     void PwMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes);
     void PwSort(const std::vector<int> &vLits, std::vector<int> &vRes);
+    void PwNet(std::vector<int> vLits, std::vector<int> &vRes);
 
     // direct
     static bool PreferDirectMerge(int n, int k);
     void DirectMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k);
     void DirectCardClauses(const std::vector<int> &vLits, int nStart, int nPos, int j, std::vector<int> &vArgs);
     void DirectNetwork(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
-    void DirectCombine4(const std::vector<int> &x, const std::vector<int> &y, std::vector<int>& vOutVars, int k);
+    void DirectCombine4(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int>& vRes, int k);
 
     // odd even 4
     void OddEvenCombine(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k);
-    void OddEvenMerge4(const std::vector<int> in[], std::vector<int> &vRes, int k);
+    void OddEvenMerge4(const std::vector<int> vIns[], std::vector<int> &vRes, int k);
     void OddEvenSel4Rec(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
+    void OddEvenSel4(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
 
     // pairwise
     void PairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k);
     void DirectPairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k);
     void PairwiseSelRec(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
+    void PairwiseSel(const std::vector<int> &vLits, std::vector<int> &vRes, int k);
   };
 
   // lifecycle
 
-  template <class Solver, bool kDirect>
-  CardinalityEncoder<Solver, kDirect>::CardinalityEncoder(Solver &solver)
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::CardinalityEncoder(Solver &solver)
     : solver_(solver) {
   }
 
   // interface
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::AtMostOne(const std::vector<int> &vLits) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::AtMostOne(const std::vector<int> &vLits) {
     std::vector<int> vLits2;
     vLits2.reserve(vLits.size());
     bool fOne = false;
-    for(int i : vLits) {
-      if(i == solver_.one) {
+    for(int nLit : vLits) {
+      if(nLit == solver_.one) {
         if(fOne) {
-          solver_.AddClauseInt({});
+          solver_.internal_.AddClause({});
           return;
         }
         fOne = true;
         continue;
       }
-      if(i == solver_.zero) {
+      if(nLit == solver_.zero) {
         continue;
       }
-      vLits2.push_back(i);
+      vLits2.push_back(nLit);
     }
     if(fOne) {
-      for(int i : vLits2) {
-        solver_.AddClauseInt({-i});
+      for(int nLit : vLits2) {
+        solver_.internal_.AddClause({Compl(nLit)});
       }
       return;
     }
-    solver_.AtMostOneInt(vLits2);
+    AtMostOneInt(vLits2);
   }
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::Onehot(const std::vector<int> &vLits) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Onehot(const std::vector<int> &vLits) {
     AtMostOne(vLits);
     solver_.AddClause(vLits);
   }
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::AtMostK(const std::vector<int> &vLits, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::AtMostK(const std::vector<int> &vLits, int k) {
     if(k < 0) {
-      solver_.AddClauseInt({});
+      solver_.internal_.AddClause({});
       return;
     }
     std::vector<int> vLits2;
     vLits2.reserve(vLits.size());
-    for(int i : vLits) {
-      if(i == solver_.one) {
+    for(int nLit : vLits) {
+      if(nLit == solver_.one) {
         if(!k) {
-          solver_.AddClauseInt({});
+          solver_.internal_.AddClause({});
           return;
         }
         k--;
         continue;
       }
-      if(i == solver_.zero) {
+      if(nLit == solver_.zero) {
         continue;
       }
-      vLits2.push_back(i);
+      vLits2.push_back(nLit);
     }
     if(int_size(vLits2) <= k) {
       return;
     }
     if(!k) {
-      for(int i : vLits2) {
-        solver_.AddClauseInt({-i});
+      for(int nLit : vLits2) {
+        solver_.internal_.AddClause({Compl(nLit)});
       }
       return;
     }
     if(k == 1) {
-      solver_.AtMostOneInt(vLits2);
+      AtMostOneInt(vLits2);
     } else {
-      solver_.AtMostKInt(vLits2, k);
+      AtMostKInt(vLits2, k);
     }
+  }
+
+  // alias
+  
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  int CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Compl(int nLit) {
+    return solver_.Compl(nLit);
+  }
+
+  // toggle
+
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::AtMostOneInt(const std::vector<int> &vLits) {
+    if constexpr(kAmoMethod == AmoMethod::Pairwise) {
+      Pairwise(vLits);
+    } else if constexpr(kAmoMethod == AmoMethod::Bimander) {
+      Bimander(vLits, kBimSize);
+    } else {
+      static_assert(kAmoMethod == AmoMethod::Pairwise || kAmoMethod == AmoMethod::Bimander);
+    }
+  }
+  
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::AtMostKInt(const std::vector<int> &vLits, int k) {
+    std::vector<int> vRes;
+    if constexpr(kAmkMethod == AmkMethod::PwNet) {
+      PwNet(vLits, vRes);
+    } else if constexpr(kAmkMethod == AmkMethod::OddEvenSel4) {
+      OddEvenSel4(vLits, vRes, k + 1);
+    } else if constexpr(kAmkMethod == AmkMethod::PairwiseSel) {
+      PairwiseSel(vLits, vRes, k + 1);
+    } else {
+      static_assert(kAmkMethod == AmkMethod::PwNet || kAmkMethod == AmkMethod::OddEvenSel4 || kAmkMethod == AmkMethod::PairwiseSel);
+    }
+    solver_.internal_.AddClause({Compl(vRes[k])});
+  }
+  
+  // helper
+
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::CheckNoConstants(const std::vector<int> &vLits) {
+    for(int nLit : vLits) {
+      assert(nLit != solver_.zero);
+      assert(nLit != solver_.one);
+    }
+  }
+  
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Comparator(int nIn1, int nIn2, int &nOut1, int &nOut2) {
+    // nIn1 and nIn2 may be solver_.zero
+    nOut1 = solver_.logic.Or2(nIn1, nIn2);
+    nOut2 = solver_.logic.And2(nIn1, nIn2);
+  }
+
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Comparator2(int nIn1, int nIn2, int nOut1, int nOut2) {
+    // nIn1 or nIn2 -> nOut1
+    // nIn1 and nIn2 -> nOut2
+    solver_.internal_.AddClause({Compl(nIn1), nOut1});
+    solver_.internal_.AddClause({Compl(nIn2), nOut1});
+    solver_.internal_.AddClause({Compl(nIn1), Compl(nIn2), nOut2});
   }
 
   // at most one
   
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::Pairwise(const std::vector<int> &vLits) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Pairwise(const std::vector<int> &vLits) {
     CheckNoConstants(vLits);
     for(int i = 1; i < int_size(vLits); i++) {
       for(int j = 0; j < i; j++) {
-        solver_.AddClauseInt({-vLits[i], -vLits[j]});
+        solver_.internal_.AddClause({Compl(vLits[i]), Compl(vLits[j])});
       }
     }
   }
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::Bimander(const std::vector<int> &vLits, int nBim) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::Bimander(const std::vector<int> &vLits, int nBim) {
     CheckNoConstants(vLits);
     assert(nBim > 0);
     const int n = int_size(vLits);
@@ -173,81 +252,28 @@ namespace boop::solver {
       if(nLits > 1) {
         for(int p = 0; p < nLits; p++) {
           for(int q = p + 1; q < nLits; q++) {
-            solver_.AddClauseInt({-vLits2[p], -vLits2[q]});
+            solver_.internal_.AddClause({Compl(vLits2[p]), Compl(vLits2[q])});
           }
         }
       }
       for(int k = 0; k < nWidth; k++) {
         if((i >> k) & 1) {
           for(int j = 0; j < nLits; j++) {
-            solver_.AddClauseInt({-vLits2[j], vBinary[k]});
+            solver_.internal_.AddClause({Compl(vLits2[j]), vBinary[k]});
           }
         } else {
           for(int j = 0; j < nLits; j++) {
-            solver_.AddClauseInt({-vLits2[j], -vBinary[k]});
+            solver_.internal_.AddClause({Compl(vLits2[j]), Compl(vBinary[k])});
           }
         }
       }
     }
   }
 
-  // at most k
-  
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PwNet(std::vector<int> vLits, std::vector<int> &vRes) {
-    vRes.clear();
-    const int n = pow2_ceil(int_size(vLits));
-    vLits.resize(n, solver_.zero);
-    PwSort(vLits, vRes);
-  }
-
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::OddEvenSel4(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
-    CheckNoConstants(vLits);
-    vRes.clear();
-    if(vLits.empty()) {
-      return;
-    }
-    OddEvenSel4Rec(vLits, vRes, k);
-  }
-
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PairwiseSel(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
-    CheckNoConstants(vLits);
-    vRes.clear();
-    PairwiseSelRec(vLits, vRes, k);
-  }
-
-  // helper
-
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::CheckNoConstants(const std::vector<int> &vLits) {
-    for(int i : vLits) {
-      assert(i != solver_.zero);
-      assert(i != solver_.one);
-    }
-  }
-  
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::Comparator(int a, int b, int &c, int &d) {
-    // a and b may be solver_.zero
-    c = solver_.logic.Or2(a, b);
-    d = solver_.logic.And2(a, b);
-  }
-
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::Comparator2(int x1, int x2, int y1, int y2) {
-    // x1 or x2 -> y1
-    // x1 and x2 -> y2
-    solver_.AddClauseInt({-x1, y1});
-    solver_.AddClauseInt({-x2, y1});
-    solver_.AddClauseInt({-x1, -x2, y2});
-  }
-
   // pw
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PwSplit(const std::vector<int> &vLits, std::vector<int> &v1, std::vector<int> &v2) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PwSplit(const std::vector<int> &vLits, std::vector<int> &v1, std::vector<int> &v2) {
     assert(vLits.size() % 2 == 0);
     int n = int_size(vLits) / 2;
     v1.resize(n);
@@ -256,8 +282,8 @@ namespace boop::solver {
       Comparator(vLits[i + i], vLits[i + i + 1], v1[i], v2[i]);
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PwMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PwMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes) {
     std::vector<int> vNext1, vNext2, vOut1, vOut2;
     assert(v1.size() == v2.size());
     int n = int_size(v1);
@@ -286,8 +312,8 @@ namespace boop::solver {
     }
     vRes[n + n - 1] = vOut2[n - 1];
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PwSort(const std::vector<int> &vLits, std::vector<int> &vRes) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PwSort(const std::vector<int> &vLits, std::vector<int> &vRes) {
     assert(vRes.empty());
     if(vLits.size() == 1) {
       vRes.push_back(vLits[0]);
@@ -299,11 +325,18 @@ namespace boop::solver {
     PwSort(v2, vOut2);
     PwMerge(vOut1, vOut2, vRes);
   }
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PwNet(std::vector<int> vLits, std::vector<int> &vRes) {
+    vRes.clear();
+    const int n = pow2_ceil(int_size(vLits));
+    vLits.resize(n, solver_.zero);
+    PwSort(vLits, vRes);
+  }
 
   // direct
 
-  template <class Solver, bool kDirect>
-  bool CardinalityEncoder<Solver, kDirect>::PreferDirectMerge(int n, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  bool CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PreferDirectMerge(int n, int k) {
     static const int minTest = 94, maxTest = 183;
     static const int nBound[] = {94+171, 95+150, 96+177, 97+156, 98+135, 99+126,
                                  100+141,101+128,102+119,103+110,104+121,105+112,106+103,107+98, 108+109,109+100,
@@ -331,8 +364,8 @@ namespace boop::solver {
     }
     return false;
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::DirectMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::DirectMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n1 = std::min(k, int_size(v1));
     int n2 = std::min(k, int_size(v2));
@@ -356,31 +389,31 @@ namespace boop::solver {
       vRes.push_back(solver_.NewVar());
     }
     for(int i = 0; i < n1; i++) {
-      solver_.AddClauseInt({-v1[i], vRes[i]});
+      solver_.internal_.AddClause({Compl(v1[i]), vRes[i]});
     }
     for(int i = 0; i < n2; i++) {
-      solver_.AddClauseInt({-v2[i], vRes[i]});
+      solver_.internal_.AddClause({Compl(v2[i]), vRes[i]});
     }
     for(int j = 0; j < n2; j++) {
       for(int i = 0; i < std::min(n1, k - j - 1); i++) {
-        solver_.AddClauseInt({-v1[i], -v2[j], vRes[i + j + 1]});
+        solver_.internal_.AddClause({Compl(v1[i]), Compl(v2[j]), vRes[i + j + 1]});
       }
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::DirectCardClauses(const std::vector<int> &vLits, int nStart, int nPos, int j, std::vector<int> &vArgs) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::DirectCardClauses(const std::vector<int> &vLits, int nStart, int nPos, int j, std::vector<int> &vArgs) {
     if(nPos == j) {
-      solver_.AddClauseInt(vArgs);
+      solver_.internal_.AddClause(vArgs);
       return;
     }
     int n = int_size(vLits);
     for(int i = nStart; i <= n - (j - nPos); i++) {
-      vArgs[nPos] = -vLits[i];
+      vArgs[nPos] = Compl(vLits[i]);
       DirectCardClauses(vLits, i + 1, nPos + 1, j, vArgs);
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::DirectNetwork(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::DirectNetwork(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n = vLits.size();
     if(k == 0 || k > n) {
@@ -396,8 +429,8 @@ namespace boop::solver {
       DirectCardClauses(vLits, 0, 0, j, vArgs);
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::DirectCombine4(std::vector<int> const &v1, std::vector<int> const &v2, std::vector<int>& vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::DirectCombine4(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int>& vRes, int k) {
     assert(vRes.empty());
     int n1 = int_size(v1);
     int n2 = int_size(v2);
@@ -410,33 +443,33 @@ namespace boop::solver {
     }
     vRes.reserve(k + 1);
     vRes.push_back(v1[0]);
-    int nLast = (k < n1 + n2 || k % 2 == 1 || n1 == n2 + 2)? k : k - 1;
+    int nLast = (k < n1 + n2 || k % 2 == 1 || n1 == n2 + 2) ? k : k - 1;
     for(int i = 0, j = 1; j < nLast; j++, i = j / 2) {
-      int ret = solver_.NewVar();
-      vRes.push_back(ret);
+      int nLit = solver_.NewVar();
+      vRes.push_back(nLit);
       if(j % 2 == 0) {
         if(i + 1 < n1 && i < n2 + 2) {
           if(i >= 2) {
-            solver_.AddClauseInt({-v1[i + 1], -v2[i - 2], ret});
+            solver_.internal_.AddClause({Compl(v1[i + 1]), Compl(v2[i - 2]), nLit});
           } else {
-            solver_.AddClauseInt({-v1[i + 1], ret});
+            solver_.internal_.AddClause({Compl(v1[i + 1]), nLit});
           }
         }
         if(i < n1 && i < n2 + 1) {
-          solver_.AddClauseInt({-v1[i], -v2[i - 1], ret});
+          solver_.internal_.AddClause({Compl(v1[i]), Compl(v2[i - 1]), nLit});
         }
       } else {
         if(i > 0 && i + 2 < n1) {
-          solver_.AddClauseInt({-v1[i + 2], ret});
+          solver_.internal_.AddClause({Compl(v1[i + 2]), nLit});
         }
         if(i < n2) {
-          solver_.AddClauseInt({-v2[i], ret});
+          solver_.internal_.AddClause({Compl(v2[i]), nLit});
         }
         if(i + 1 < n1 && i < n2 + 1) {
           if(i > 0) {
-            solver_.AddClauseInt({-v1[i + 1], -v2[i - 1], ret});
+            solver_.internal_.AddClause({Compl(v1[i + 1]), Compl(v2[i - 1]), nLit});
           } else {
-            solver_.AddClauseInt({-v1[i + 1], ret});
+            solver_.internal_.AddClause({Compl(v1[i + 1]), nLit});
           }
         }
       }
@@ -445,11 +478,11 @@ namespace boop::solver {
       vRes.push_back(n1 == n2 ? v2[n2 - 1] : v1[n1 - 1]);
     }
     if(k < n1 + n2) {
-      solver_.AddClauseInt({-v1[n1 - 1], -v2[n2 - 1]});
+      solver_.internal_.AddClause({Compl(v1[n1 - 1]), Compl(v2[n2 - 1])});
       if(k + 1 < n1 + n2) {
-        solver_.AddClauseInt({-v1[n1 - 2], -v2[n2 - 1]});
+        solver_.internal_.AddClause({Compl(v1[n1 - 2]), Compl(v2[n2 - 1])});
         if(n2 >= 2) {
-          solver_.AddClauseInt({-v1[n1 - 1], -v2[n2 - 2]});
+          solver_.internal_.AddClause({Compl(v1[n1 - 1]), Compl(v2[n2 - 2])});
         }
       }
     }
@@ -458,8 +491,8 @@ namespace boop::solver {
   
   // odd even 4
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::OddEvenCombine(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::OddEvenCombine(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n1 = int_size(v1);
     int n2 = int_size(v2);
@@ -475,10 +508,10 @@ namespace boop::solver {
     }
     if(k % 2 == 0) {
       if(k < n1 + n2) {
-        int ret = solver_.NewVar();
-        vRes.push_back(ret);
-        solver_.AddClauseInt({-v2[k / 2 - 1], ret});
-        solver_.AddClauseInt({-v1[k / 2], ret});
+        int nLit = solver_.NewVar();
+        vRes.push_back(nLit);
+        solver_.internal_.AddClause({Compl(v2[k / 2 - 1]), nLit});
+        solver_.internal_.AddClause({Compl(v1[k / 2]), nLit});
       } else if(n1 == n2) {
         vRes.push_back(v2[k / 2 - 1]);
       } else {
@@ -486,11 +519,11 @@ namespace boop::solver {
       }
     }
     if(k < n1 + n2) {
-      solver_.AddClauseInt({-v1[n1 - 1], -v2[n2 - 1]});
+      solver_.internal_.AddClause({Compl(v1[n1 - 1]), Compl(v2[n2 - 1])});
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::OddEvenMerge4(const std::vector<int> vIns[], std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::OddEvenMerge4(const std::vector<int> vIns[], std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int nn[4] = {int_size(vIns[0]), int_size(vIns[1]), int_size(vIns[2]), int_size(vIns[3])};
     assert(nn[0] > 0);
@@ -536,15 +569,15 @@ namespace boop::solver {
       OddEvenCombine(vOut1, vOut2, vRes, k);
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::OddEvenSel4Rec(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::OddEvenSel4Rec(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
     int n = int_size(vLits);
     assert(k >= 0);
     assert(k <= n);
     assert(n > 0);
     if(k == 0) {
-      for(int i : vLits) {
-        solver_.AddClauseInt({-i});
+      for(int nLit : vLits) {
+        solver_.internal_.AddClause({Compl(nLit)});
       }
       return;
     }
@@ -587,11 +620,20 @@ namespace boop::solver {
       OddEvenMerge4(vOuts, vRes, k);
     }
   }
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::OddEvenSel4(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
+    CheckNoConstants(vLits);
+    vRes.clear();
+    if(vLits.empty()) {
+      return;
+    }
+    OddEvenSel4Rec(vLits, vRes, k);
+  }
 
   // pairwise
 
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::DirectPairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::DirectPairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n1 = std::min(k, int_size(v1));
     int n2 = std::min(k, int_size(v2));
@@ -609,19 +651,19 @@ namespace boop::solver {
       vRes.push_back(solver_.NewVar());
     }
     for(int i = 0; i < n1; i++) {
-      solver_.AddClauseInt({-v1[i], vRes[i]});
+      solver_.internal_.AddClause({Compl(v1[i]), vRes[i]});
     }
     for(int i = 0; i < std::min(n2, k / 2); i++) {
-      solver_.AddClauseInt({-v2[i], vRes[2 * i + 1]});
+      solver_.internal_.AddClause({Compl(v2[i]), vRes[2 * i + 1]});
     }
     for(int j = 0; j < n2; j++) {
       for(int i = j + 1; i < std::min(n1, k - j - 1); i++) {
-        solver_.AddClauseInt({-v1[i], -v2[j], vRes[i + j + 1]});
+        solver_.internal_.AddClause({Compl(v1[i]), Compl(v2[j]), vRes[i + j + 1]});
       }
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PairwiseMerge(const std::vector<int> &v1, const std::vector<int> &v2, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n1 = int_size(v1);
     int n2 = int_size(v2);
@@ -662,19 +704,19 @@ namespace boop::solver {
     }
     for(int j = (k + 1) / 2; j < n1; j++) {
       if(v1Int[j] != solver_.zero) {
-        solver_.AddClauseInt({-v1Int[j]});
+        solver_.internal_.AddClause({Compl(v1Int[j])});
       }
     }
   }
-  template <class Solver, bool kDirect>
-  void CardinalityEncoder<Solver, kDirect>::PairwiseSelRec(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PairwiseSelRec(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
     assert(vRes.empty());
     int n = int_size(vLits);
     assert(k >= 0);
     k = std::min(k, n);
     if(k == 0) {
-      for(int i : vLits) {
-        solver_.AddClauseInt({-i});
+      for(int nLit : vLits) {
+        solver_.internal_.AddClause({Compl(nLit)});
       }
       return;
     }
@@ -718,5 +760,13 @@ namespace boop::solver {
       PairwiseMerge(vOut1, vOut2, vRes, k);
     }
   }
+  template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize, AmkMethod kAmkMethod>
+  void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::PairwiseSel(const std::vector<int> &vLits, std::vector<int> &vRes, int k) {
+    CheckNoConstants(vLits);
+    vRes.clear();
+    PairwiseSelRec(vLits, vRes, k);
+  }
 
 } // namespace boop::solver
+
+BOOP_HEADER_END
