@@ -10,9 +10,9 @@ BOOP_HEADER_START
 namespace boop::solver {
   
   enum class Status {
-    SATISFIABLE,
-    UNSATISFIABLE,
-    UNDETERMINED,
+    SAT,
+    UNSAT,
+    UNDET,
   };
     
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
@@ -30,13 +30,16 @@ namespace boop::solver {
 
     // lifecycle
     Solver();
+    void Clear();
 
     // variable
     int NewVar(); // returned as a positive literal
+    int NewVars(int n); // returns the lowest of new consecutive literals
     
     // literal
     int Regular(int nLit);
     int Compl(int nLit);
+    int NotCond(int nLit, bool fCompl);
     bool IsCompl(int nLit);
 
     // clause
@@ -44,10 +47,13 @@ namespace boop::solver {
     void AddClause(const std::vector<int> &vLits);
     template <class It>
     void AddClause(It it, It itEnd, int n);
+    bool IsInconsistent();
 
-    //solve
-    Status Solve();
-    Status Solve(const std::vector<int> &vAssumptions, std::set<int> &sCore);
+    // option
+    void SetConflictLimit(int nConflictLimit);
+
+    // solve
+    Status Solve(const std::vector<int> *vAssumptions = nullptr, std::set<int> *sCore = nullptr);
 
     // result
     bool Value(int nLit);
@@ -64,11 +70,30 @@ namespace boop::solver {
       cardinality(*this) {
   }
   
+  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
+  void Solver<Internal, Logic, Cardi>::Clear() {
+    internal_.Clear();
+  }
+  
   // variable
   
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
   int Solver<Internal, Logic, Cardi>::NewVar() {
     return internal_.NewVar();
+  }
+
+  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
+  int Solver<Internal, Logic, Cardi>::NewVars(int n) {
+    if constexpr(requires { internal_.NewVars(n); }) {
+      return internal_.NewVars(n);
+    }
+    int nLit = -1;
+    for(int i = 0; i < n; i++) {
+      int nLitNew = NewVar();
+      assert(nLit == -1 || nLitNew == nLit + 1);
+      nLit = nLitNew;
+    }
+    return nLit + 1 - n;
   }
 
   // literal
@@ -81,6 +106,11 @@ namespace boop::solver {
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
   int Solver<Internal, Logic, Cardi>::Compl(int nLit) {
     return -nLit;
+  }
+
+  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
+  int Solver<Internal, Logic, Cardi>::NotCond(int nLit, bool fCompl) {
+    return fCompl ? -nLit : nLit;
   }
 
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
@@ -117,27 +147,42 @@ namespace boop::solver {
     internal_.AddClause(vLits);
   }
 
+  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
+  bool Solver<Internal, Logic, Cardi>::IsInconsistent() {
+    if constexpr(requires { internal_.IsInconsistent(); }) {
+      return internal_.IsInconsistent();
+    }
+    return false;
+  }
+  
+  // option
+  
+  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
+  void Solver<Internal, Logic, Cardi>::SetConflictLimit(int nConflictLimit) {
+    internal_.SetConflictLimit(nConflictLimit);
+  }
+  
   // solve
 
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
-  Status Solver<Internal, Logic, Cardi>::Solve() {
-    return internal_.Solve();
-  }
-  
-  template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
-  Status Solver<Internal, Logic, Cardi>::Solve(const std::vector<int> &vAssumptions, std::set<int> &sCore) {
+  Status Solver<Internal, Logic, Cardi>::Solve(const std::vector<int> *vAssumptions, std::set<int> *sCore) {
+    if(vAssumptions == nullptr) {
+      return internal_.Solve(vAssumptions, sCore);
+    }
     std::vector<int> vAssumptions2;
-    vAssumptions2.reserve(vAssumptions.size());
-    for(int nLit : vAssumptions) {
+    vAssumptions2.reserve(vAssumptions->size());
+    for(int nLit : *vAssumptions) {
       if(nLit == zero) {
-        sCore.insert(nLit);
-        return Status::UNSATISFIABLE;
+        if(sCore != nullptr) {
+          sCore->insert(nLit);
+        }
+        return Status::UNSAT;
       }
       if(nLit != one) {
         vAssumptions2.push_back(nLit);
       }
     }
-    return internal_.Solve(vAssumptions2, sCore);
+    return internal_.Solve(&vAssumptions2, sCore);
   }
 
   // value

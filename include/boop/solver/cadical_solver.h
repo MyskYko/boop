@@ -14,19 +14,24 @@ namespace boop::solver {
   public:
     // lifecycle
     CadicalSolver();
+    void Clear();
     
     // variable
     int NewVar();
+    int NewVars(int n);
 
     // clause
     void AddClause(std::initializer_list<int> ilsLits);
     void AddClause(const std::vector<int> &vLits);
     template <class It>
     void AddClause(It it, It itEnd);
+    bool IsInconsistent();
 
-    //solve
-    Status Solve();
-    Status Solve(const std::vector<int> &vAssumptions, std::set<int> &sCore);
+    // option
+    void SetConflictLimit(int nConflictLimit);
+    
+    // solve
+    Status Solve(const std::vector<int> *vAssumptions, std::set<int> *sCore);
 
     // result
     bool Value(int nLit);
@@ -44,6 +49,10 @@ namespace boop::solver {
       nClauses_(0) {
   }
 
+  void CadicalSolver::Clear() {
+    solver_ = CaDiCaL::Solver();
+  }
+
   // variable
   
   int CadicalSolver::NewVar() {
@@ -51,6 +60,12 @@ namespace boop::solver {
     return solver_.declare_one_more_variable();
   }
 
+  int CadicalSolver::NewVars(int n) {
+    nVars_ += n;
+    int nLit = solver_.declare_more_variables(n);
+    return nLit + 1 - n;
+  }
+  
   // clause
 
   void CadicalSolver::AddClause(std::initializer_list<int> ilsLits) {
@@ -69,37 +84,40 @@ namespace boop::solver {
     solver_.add(0);
     nClauses_++;
   }
+
+  bool CadicalSolver::IsInconsistent() {
+    solver_.is_inconsistent();
+  }
+
+  // option
+  
+  void CadicalSolver::SetConflictLimit(int nConflictLimit) {
+    solver_.limit("conflicts", nConflictLimit);
+  }
   
   // solve
   
-  Status CadicalSolver::Solve() {
-    int res = solver_.solve();
-    if(CaDiCaL::Status::SATISFIABLE == res) {
-      return Status::SATISFIABLE;
-    }
-    if(CaDiCaL::Status::UNSATISFIABLE == res) {
-      return Status::UNSATISFIABLE;
-    }
-    return Status::UNDETERMINED;
-  }
-
-  Status CadicalSolver::Solve(const std::vector<int> &vAssumptions, std::set<int> &sCore) {
-    for(int nLit : vAssumptions) {
-      solver_.assume(nLit);
+  Status CadicalSolver::Solve(const std::vector<int> *vAssumptions, std::set<int> *sCore) {
+    if(vAssumptions != nullptr) {
+      for(int nLit : *vAssumptions) {
+        solver_.assume(nLit);
+      }
     }
     int nRes = solver_.solve();
-    for(int nLit : vAssumptions) {
-      if(solver_.failed(nLit)) {
-        sCore.insert(nLit);
+    if(vAssumptions != nullptr && sCore != nullptr) {
+      for(int nLit : *vAssumptions) {
+        if(solver_.failed(nLit)) {
+          sCore->insert(nLit);
+        }
       }
     }
     if(CaDiCaL::Status::SATISFIABLE == nRes) {
-      return Status::SATISFIABLE;
+      return Status::SAT;
     }
     if(CaDiCaL::Status::UNSATISFIABLE == nRes) {
-      return Status::UNSATISFIABLE;
+      return Status::UNSAT;
     }
-    return Status::UNDETERMINED;
+    return Status::UNDET;
   }
 
   // value
