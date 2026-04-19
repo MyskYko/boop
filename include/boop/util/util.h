@@ -9,11 +9,30 @@
 #include <functional>
 #include <limits>
 #include <type_traits>
+#include <bit>
 #include <cassert>
 
 #include "boop/util/types.h"
 
 namespace rrr {
+
+  // 
+  
+  constexpr int clog2(int n) {
+    assert(n > 0);
+    if(n <= 1) {
+      return 0;
+    }
+    return std::bit_width(n - 1);
+  }
+  
+  constexpr int pow2_ceil(int n) {
+    assert(n >= 0);
+    if(n == 0) {
+      return 0;
+    }
+    return std::bit_ceil(n);
+  }
 
   /* {{{ Invocable */
 
