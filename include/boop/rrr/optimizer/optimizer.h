@@ -452,7 +452,7 @@ namespace boop::rrr {
     vTfoMarks_.clear();
     vTfoMarks_.resize(pNtk_->GetNumNodes());
     vTfoMarks_[nId] = true;
-    pNtk_->ForEachTfo(nId, false, [&](int fo) {
+    pNtk_->template ForEachTfo<false, true, true, false>(nId, [&](int fo) {
       vTfoMarks_[fo] = true;
     });
   }

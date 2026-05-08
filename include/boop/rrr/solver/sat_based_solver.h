@@ -116,7 +116,7 @@ namespace boop::rrr {
     }
     vLits_.clear();
     assert(pNtk_->GetNodeType(nId) == AND);
-    pNtk_->ForEachFaninIdx(nId, [&](int nIdx2, int nFi, bool fCompl) {
+    pNtk_->template ForEachFanin<true, true, false>(nId, [&](int nIdx2, int nFi, bool fCompl) {
       if(nIdx == nIdx2) {
         vLits_.push_back(sol_.NotCond(vVarLits_[nFi], !fCompl));
       } else {
@@ -151,7 +151,7 @@ namespace boop::rrr {
       vValues_[nId] = sol_.Value(vVarLits_[nId]) ? TEMP_TRUE : TEMP_FALSE;
       vValuesInv_[nId] = sol_.Value(vVarLitsInv_[nId]) ? TEMP_TRUE : TEMP_FALSE;
     });
-    pNtk_->ForEachFaninIdx(nId, [&](int nIdx2, int nFi, bool fCompl) {
+    pNtk_->template ForEachFanin<true, true, false>(nId, [&](int nIdx2, int nFi, bool fCompl) {
       assert((vValues_[nFi] == TEMP_TRUE) ^ (nIdx == nIdx2) ^ fCompl);
       vValues_[nFi] = DecideVarValue(vValues_[nFi]);
       vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
@@ -503,7 +503,7 @@ namespace boop::rrr {
       return;
     }
     Print(0, "encoding an inverted copy");
-    pNtk_->ForEachTfo(nTarget_, false, [&](int nId) {
+    pNtk_->template ForEachTfo<false, true, true, false>(nTarget_, [&](int nId) {
       EncodeNode(vVarLitsInv_, nId);
     });
     Print(0, "encoding miter xors");

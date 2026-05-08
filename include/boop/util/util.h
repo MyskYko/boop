@@ -16,8 +16,8 @@
 
 namespace rrr {
 
-  // 
-  
+  //
+
   constexpr int clog2(int n) {
     assert(n > 0);
     if(n <= 1) {
@@ -71,6 +71,26 @@ namespace rrr {
   template <typename Fn, typename... Args>
   constexpr bool returns_int_v = returns_int<Fn, Args...>::value;
 #endif
+
+#if defined(__cpp_lib_is_invocable)
+  template <typename Fn, typename... Args>
+  constexpr bool returns_bool_v = std::is_same_v<invoke_return_t<Fn, Args...>, bool>;
+#else
+  template <typename Fn, typename... Args>
+  struct returns_bool: std::is_same<invoke_return_t<Fn, Args...>, bool> {};
+  template <typename Fn, typename... Args>
+  constexpr bool returns_bool_v = returns_bool<Fn, Args...>::value;
+#endif
+
+  template <typename Func, typename... Args>
+  static inline bool invoke_and_return_stop(const Func &func, Args &&...args) {
+    if constexpr(returns_bool_v<Func, Args...>) {
+      return func(std::forward<Args>(args)...);
+    } else {
+      func(std::forward<Args>(args)...);
+      return false;
+    }
+  }
   
   /* }}} */
 

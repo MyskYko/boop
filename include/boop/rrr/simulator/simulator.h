@@ -68,7 +68,7 @@ namespace boop::rrr {
     std::vector<Word> vCare_;
     std::vector<Word> vTmp_;
 
-    unsigned iTrav_;
+    unsigned nTrav_;
     std::vector<unsigned> vTrav_;
     
     int nPivot_;
@@ -135,7 +135,7 @@ namespace boop::rrr {
       fInitialized_(false),
       fExhaustive_(false),
       nTarget_(-1),
-      iTrav_(0),
+      nTrav_(0),
       nPivot_(0),
       fUpdate_(false) {
     ResetSummary();
@@ -150,7 +150,7 @@ namespace boop::rrr {
       fInitialized_(false),
       fExhaustive_(false),
       nTarget_(-1),
-      iTrav_(0),
+      nTrav_(0),
       nPivot_(0),
       fUpdate_(false) {
     ResetSummary();
@@ -192,7 +192,7 @@ namespace boop::rrr {
     switch(pNtk_->GetNodeType(nId)) {
     case AND: {
       auto it = vCare_.begin();
-      pNtk_->ForEachFaninIdx(nId, [&](int nIdx2, int nFi, bool fCompl) {
+      pNtk_->template ForEachFanin<true, true, false>(nId, [&](int nIdx2, int nFi, bool fCompl) {
         if(nIdx == nIdx2) {
           return;
         }
@@ -327,8 +327,8 @@ namespace boop::rrr {
       vValuesInv_.resize(nWords_ * pNtk_->GetNumNodes());
       StartTraversal();
       vec_ops::Copy(1, vValuesInv_.begin() + nTarget_ * nWords_ + nWord, vValues_.begin() + nTarget_ * nWords_ + nWord, true);
-      vTrav_[nTarget_] = iTrav_;
-      pNtk_->ForEachTfo(nTarget_, false, [&](int nId) {
+      vTrav_[nTarget_] = nTrav_;
+      pNtk_->template ForEachTfo<false, true, true, false>(nTarget_, [&](int nId) {
         auto itX = vValuesInv_.end();
         auto itY = vValuesInv_.begin() + nId * nWords_ + nWord;
         bool fComplX = false;
@@ -336,14 +336,14 @@ namespace boop::rrr {
         case AND:
           pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
             if(itX == vValuesInv_.end()) {
-              if(vTrav_[nFi] != iTrav_) {
+              if(vTrav_[nFi] != nTrav_) {
                 itX = vValues_.begin() + nFi * nWords_ + nWord;
               } else {
                 itX = vValuesInv_.begin() + nFi * nWords_ + nWord;
               }
               fComplX = fCompl;
             } else {
-              if(vTrav_[nFi] != iTrav_) {
+              if(vTrav_[nFi] != nTrav_) {
                 vec_ops::And(1, itY, itX, vValues_.begin() + nFi * nWords_ + nWord, fComplX, fCompl);
               } else {
                 vec_ops::And(1, itY, itX, vValuesInv_.begin() + nFi * nWords_ + nWord, fComplX, fCompl);
@@ -361,14 +361,14 @@ namespace boop::rrr {
         default:
           assert(0);
         }
-        vTrav_[nId] = iTrav_;
+        vTrav_[nId] = nTrav_;
         Print(1, "node", nId);
         PrintBits(2, 1, vValuesInv_.begin() + nId * nWords_ + nWord);
       });
       vec_ops::Clear(1, vCare_.begin() + nWord);
       pNtk_->ForEachPoDriver([&](int nFi) {
         assert(nFi != nTarget_);
-        if(vTrav_[nFi] == iTrav_) { // skip unaffected POs
+        if(vTrav_[nFi] == nTrav_) { // skip unaffected POs
           vCare_[nWord] |= (vValues_[nFi * nWords_ + nWord] ^ vValuesInv_[nFi * nWords_ + nWord]);
         }
       });
@@ -534,15 +534,15 @@ namespace boop::rrr {
   unsigned Simulator<Ntk>::StartTraversal(int n) {
     do {
       for(int i = 0; i < n; i++) {
-        iTrav_++;
-        if(iTrav_ == 0) {
+        nTrav_++;
+        if(nTrav_ == 0) {
           vTrav_.clear();
           break;
         }
       }
-    } while(iTrav_ == 0);
+    } while(nTrav_ == 0);
     vTrav_.resize(pNtk_->GetNumNodes());
-    return iTrav_ - n + 1;
+    return nTrav_ - n + 1;
   }
 
   // simulation
@@ -652,14 +652,14 @@ namespace boop::rrr {
   void Simulator<Ntk>::Resimulate() {
     TimePoint timeStart = GetCurrentTime();
     Print(0, "resimulating");
-    pNtk_->ForEachTfosUpdate(sUpdates_, false, [&](int nId) {
+    pNtk_->template ForEachTfos<false, false, true, false>(sUpdates_, [&](int nId) {
       bool fUpdated = ResimulateNode(vValues_, nId);
       Print(1, "resimulating", "node", nId);
       PrintBits(2, nWords_, vValues_.begin() + nId * nWords_);
-      return fUpdated;
+      return !fUpdated;
     });
     /* alternative version that updates entire TFO
-    pNtk_->ForEachTfos(sUpdates_, false, [&](int nId) {
+    pNtk_->template ForEachTfos<false, true, true, false>(sUpdates_, [&](int nId) {
       SimulateNode(vValues_, nId);
       Print(1, "resimulating", "node", nId);
       PrintBits(2, nWords_, vValues_.begin() + nId * nWords_);
@@ -708,7 +708,7 @@ namespace boop::rrr {
     }
     assert(nWords_ <= par_.nWords);
     vValues_.resize(nWords_ * pNtk_->GetNumNodes());
-    pNtk_->ForEachPiIdx([&](int nIdx, int nId) {
+    pNtk_->ForEachPi([&](int nIdx, int nId) {
       auto it = vValues_.begin() + nId * nWords_;
       if(nIdx < 6) {
         for(int i = 0; i < nWords_; i++, ++it) {
@@ -760,8 +760,8 @@ namespace boop::rrr {
     vValuesInv_.resize(nWords_ * pNtk_->GetNumNodes());
     StartTraversal();
     vec_ops::Copy(nWords_, vValuesInv_.begin() + nTarget_ * nWords_, vValues_.begin() + nTarget_ * nWords_, true);
-    vTrav_[nTarget_] = iTrav_;
-    pNtk_->ForEachTfo(nTarget_, false, [&](int nId) {
+    vTrav_[nTarget_] = nTrav_;
+    pNtk_->template ForEachTfo<false, true, true, false>(nTarget_, [&](int nId) {
       auto itX = vValuesInv_.end();
       auto itY = vValuesInv_.begin() + nId * nWords_;
       bool fComplX = false;
@@ -769,14 +769,14 @@ namespace boop::rrr {
       case AND:
         pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
           if(itX == vValuesInv_.end()) {
-            if(vTrav_[nFi] != iTrav_) {
+            if(vTrav_[nFi] != nTrav_) {
               itX = vValues_.begin() + nFi * nWords_;
             } else {
               itX = vValuesInv_.begin() + nFi * nWords_;
             }
             fComplX = fCompl;
           } else {
-            if(vTrav_[nFi] != iTrav_) {
+            if(vTrav_[nFi] != nTrav_) {
               vec_ops::And(nWords_, itY, itX, vValues_.begin() + nFi * nWords_, fComplX, fCompl);
             } else {
               vec_ops::And(nWords_, itY, itX, vValuesInv_.begin() + nFi * nWords_, fComplX, fCompl);
@@ -794,7 +794,7 @@ namespace boop::rrr {
       default:
         assert(0);
       }
-      vTrav_[nId] = iTrav_;
+      vTrav_[nId] = nTrav_;
       Print(1, "node", nId);
       PrintBits(2, nWords_, vValuesInv_.begin() + nId * nWords_);
     });
@@ -802,7 +802,7 @@ namespace boop::rrr {
     vec_ops::Clear(nWords_, vCare_.begin());
     pNtk_->ForEachPoDriver([&](int nFi) {
       assert(nFi != nTarget_);
-      if(vTrav_[nFi] == iTrav_) { // skip unaffected POs
+      if(vTrav_[nFi] == nTrav_) { // skip unaffected POs
         for(int i = 0; i < nWords_; i++) {
           vCare_[i] |= (vValues_[nFi * nWords_ + i] ^ vValuesInv_[nFi * nWords_ + i]);
         }
@@ -812,8 +812,6 @@ namespace boop::rrr {
     PrintBits(2, nWords_, vCare_.begin());
     durationCare_ += Duration(timeStart, GetCurrentTime());
   }
-
-  // TODO: make helper functions for iTrav_ (visit and visited)
 
   // preparation
 
@@ -948,12 +946,12 @@ namespace boop::rrr {
     } else {
       nTarget_ = -1;
       std::vector<std::vector<Word>> vInputStimuli(pNtk_->GetNumPis());
-      pNtk_->ForEachPiIdx([&](int nIdx, int nId) {
+      pNtk_->ForEachPi([&](int nIdx, int nId) {
         vInputStimuli[nIdx].resize(nWords_);
         vec_ops::Copy(nWords_, vInputStimuli[nIdx].begin(), vValues_.begin() + nId * nWords_, false);
       });
       vValues_ = vBackups_[nSlot].vValues_;
-      pNtk_->ForEachPiIdx([&](int nIdx, int nId) {
+      pNtk_->ForEachPi([&](int nIdx, int nId) {
         vec_ops::Copy(nWords_, vValues_.begin() + nId * nWords_, vInputStimuli[nIdx].begin(), false);
       });
       for(int nOffset : vOffsets) {
