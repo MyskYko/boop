@@ -285,7 +285,7 @@ namespace boop {
       return 0;
     }
     TimePoint timeCurrent = GetCurrentTime();
-    Seconds nRemainingTime = par_.nTimeout - DurationInSeconds(timeStart_, timeCurrent);
+    Seconds nRemainingTime = par_.nTimeout - GetDurationInSeconds(timeStart_, timeCurrent);
     if(nRemainingTime == 0) { // avoid glitch
       return -1;
     }
@@ -295,7 +295,7 @@ namespace boop {
   template <typename Ntk, typename Opt, typename Prt>
   Duration HeloScheduler<Ntk, Opt, Prt>::GetElapsedTime() const {
     TimePoint timeCurrent = GetCurrentTime();
-    return Duration(timeStart_, timeCurrent);
+    return GetDuration(timeStart_, timeCurrent);
   }
 
   // abc
@@ -309,7 +309,7 @@ namespace boop {
         TimePoint timeStartAbc = GetCurrentTime();
         Abc9Execute(pNtk, command);
         TimePoint timeEndAbc = GetCurrentTime();
-        duration += Duration(timeStartAbc, timeEndAbc);
+        duration += GetDuration(timeStartAbc, timeEndAbc);
       }
       return;
     }
@@ -317,7 +317,7 @@ namespace boop {
     TimePoint timeStartAbc = GetCurrentTime();
     Abc9Execute(pNtk, command);
     TimePoint timeEndAbc = GetCurrentTime();
-    duration += Duration(timeStartAbc, timeEndAbc);
+    duration += GetDuration(timeStartAbc, timeEndAbc);
   }
 
   // execute jobs
@@ -462,7 +462,7 @@ namespace boop {
       assert(0);
     }
     TimePoint timeEndLocal = GetCurrentTime();
-    pJob->duration = Duration(timeStartLocal, timeEndLocal);
+    pJob->duration = GetDuration(timeStartLocal, timeEndLocal);
     pJob->summaryStats = opt.GetStatsSummary();
     pJob->summaryTimes = opt.GetTimesSummary();
     pJob->summaryTimes.emplace_back("abc", durationAbc);

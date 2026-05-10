@@ -10,6 +10,7 @@
 #include <memory>
 
 #include "boop/util/util.h"
+#include "boop/network/types.h"
 
 BOOP_HEADER_START
 

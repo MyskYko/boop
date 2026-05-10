@@ -1,5 +1,9 @@
 #pragma once
 
+#include "boop/util/util.h"
+#include "boop/network/types.h"
+#include "boop/rrr/types.h"
+
 BOOP_HEADER_START
 
 namespace boop::rrr {
@@ -103,7 +107,7 @@ namespace boop::rrr {
 
   template <typename Ntk, typename Sol>
   typename SatBasedSolver<Ntk, Sol>::Result SatBasedSolver<Ntk, Sol>::CheckRedundancy(int nId, int nIdx) {
-    time_point timeStart = GetCurrentTime();
+    TimePoint timeStart = GetCurrentTime();
     if(fUpdate_ || nId != nTarget_) {
       fUpdate_ = false;
       nTarget_ = nId;
@@ -111,7 +115,7 @@ namespace boop::rrr {
     }
     if(fTrivialUnsat_) {
       Print(0, "trivially UNSATISFIABLE");
-      durationRedundancy_ += Duration(timeStart, GetCurrentTime());
+      durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNSAT;
     }
     vLits_.clear();
@@ -130,12 +134,12 @@ namespace boop::rrr {
     if(status == solver::Status::UNSAT) {
       Print(0, "UNSATISFIABLE");
       nUnsats_++;
-      durationRedundancy_ += Duration(timeStart, GetCurrentTime());
+      durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNSAT;
     }
     if(status == solver::Status::UNDET) {
       Print(0, "UNDETERMINED");
-      durationRedundancy_ += Duration(timeStart, GetCurrentTime());
+      durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNDET;
     }
     assert(status == solver::Status::SAT);
@@ -156,13 +160,13 @@ namespace boop::rrr {
       vValues_[nFi] = DecideVarValue(vValues_[nFi]);
       vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
     });
-    durationRedundancy_ += Duration(timeStart, GetCurrentTime());
+    durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
     return Result::SAT;
   }
 
   template <typename Ntk, typename Sol>
   typename SatBasedSolver<Ntk, Sol>::Result SatBasedSolver<Ntk, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
-    time_point timeStart = GetCurrentTime();
+    TimePoint timeStart = GetCurrentTime();
     if(fUpdate_ || nId != nTarget_) {
       fUpdate_ = false;
       nTarget_ = nId;
@@ -170,7 +174,7 @@ namespace boop::rrr {
     }
     if(fTrivialUnsat_) {
       Print(0, "trivially UNSATISFIABLE");
-      durationFeasibility_ += Duration(timeStart, GetCurrentTime());
+      durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNSAT;
     }
     vLits_.clear();
@@ -184,12 +188,12 @@ namespace boop::rrr {
     if(status == solver::Status::UNSAT) {
       Print(0, "UNSATISFIABLE");
       nUnsats_++;
-      durationFeasibility_ += Duration(timeStart, GetCurrentTime());
+      durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNSAT;
     }
     if(status == solver::Status::UNDET) {
       Print(0, "UNDETERMINED");
-      durationFeasibility_ += Duration(timeStart, GetCurrentTime());
+      durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
       return Result::UNDET;
     }
     assert(status == solver::Status::SAT);
@@ -213,7 +217,7 @@ namespace boop::rrr {
     assert((vValuesInv_[nFi] == TEMP_TRUE) ^ !fCompl);
     vValues_[nFi] = DecideVarValue(vValues_[nFi]);
     vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
-    durationFeasibility_ += Duration(timeStart, GetCurrentTime());
+    durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
     return Result::SAT;
   }
   

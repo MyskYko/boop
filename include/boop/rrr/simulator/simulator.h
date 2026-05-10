@@ -6,6 +6,8 @@
 #include <climits>
 
 #include "boop/util/util.h"
+#include "boop/network/types.h"
+#include "boop/rrr/types.h"
 #include "boop/rrr/simulator/vec_ops.h"
 
 BOOP_HEADER_START
@@ -374,7 +376,7 @@ namespace boop::rrr {
       });
       Print(1, "care", nTarget_);
       PrintBits(2, 1, vCare_.begin() + nWord);
-      durationCare_ += Duration(timeStart, GetCurrentTime());
+      durationCare_ += GetDuration(timeStart, GetCurrentTime());
     }    
     nCex_++;
   }
@@ -645,7 +647,7 @@ namespace boop::rrr {
       Print(1, "simulating", "node", nId);
       PrintBits(2, nWords_, vValues_.begin() + nId * nWords_);
     });
-    durationSimulation_ += Duration(timeStart, GetCurrentTime());
+    durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
   }
 
   template <typename Ntk>
@@ -666,7 +668,7 @@ namespace boop::rrr {
       }
     });
     */
-    durationSimulation_ += Duration(timeStart, GetCurrentTime());
+    durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
   }
 
   template <typename Ntk>
@@ -678,7 +680,7 @@ namespace boop::rrr {
       Print(1, "simulating word", nOffset, "node", nId);
       PrintBits(2, 1, vValues_.begin() + nId * nWords_ + nOffset);
     });
-    durationSimulation_ += Duration(timeStart, GetCurrentTime());
+    durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
   }
 
   // generate stimuli
@@ -753,7 +755,7 @@ namespace boop::rrr {
       vec_ops::Fill(nWords_, vCare_.begin());
       Print(1, "care", nTarget_);
       PrintBits(2, nWords_, vCare_.begin());
-      durationCare_ += Duration(timeStart, GetCurrentTime());
+      durationCare_ += GetDuration(timeStart, GetCurrentTime());
       return;
     }
     // TFO computation
@@ -810,7 +812,7 @@ namespace boop::rrr {
     });
     Print(1, "care", nTarget_);
     PrintBits(2, nWords_, vCare_.begin());
-    durationCare_ += Duration(timeStart, GetCurrentTime());
+    durationCare_ += GetDuration(timeStart, GetCurrentTime());
   }
 
   // preparation

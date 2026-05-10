@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "boop/util/util.h"
+#include "boop/network/types.h"
 
 BOOP_HEADER_START
 
@@ -462,7 +463,7 @@ namespace boop::rrr {
   template <typename Ntk, typename Ana>
   bool Optimizer<Ntk, Ana>::Timeout() {
     if(nTimeout_) {
-      if(DurationInSeconds(timeStart_, GetCurrentTime()) > nTimeout_) {
+      if(GetDurationInSeconds(timeStart_, GetCurrentTime()) > nTimeout_) {
         return true;
       }
     }
@@ -818,7 +819,7 @@ namespace boop::rrr {
     }
     if(!fSubRoutine) {
       TimePoint timeEnd = GetCurrentTime();
-      statsLocal_.durationReduce += Duration(timeStart, timeEnd);
+      statsLocal_.durationReduce += GetDuration(timeStart, timeEnd);
     }
     return fReduced;
   }
@@ -834,7 +835,7 @@ namespace boop::rrr {
       }
     }
     TimePoint timeEnd = GetCurrentTime();
-    statsLocal_.durationReduce += Duration(timeStart, timeEnd);
+    statsLocal_.durationReduce += GetDuration(timeStart, timeEnd);
     return fReduced;
   }  
 
@@ -892,7 +893,7 @@ namespace boop::rrr {
       vTfoMarks_[nFi] = false;
     });
     TimePoint timeEnd = GetCurrentTime();
-    statsLocal_.durationAdd += Duration(timeStart, timeEnd);
+    statsLocal_.durationAdd += GetDuration(timeStart, timeEnd);
     return it;
   }
 
@@ -931,7 +932,7 @@ namespace boop::rrr {
       vTfoMarks_[nFi] = false;
     });
     TimePoint timeEnd = GetCurrentTime();
-    statsLocal_.durationAdd += Duration(timeStart, timeEnd);
+    statsLocal_.durationAdd += GetDuration(timeStart, timeEnd);
     return nAddedFis;
   }
 
