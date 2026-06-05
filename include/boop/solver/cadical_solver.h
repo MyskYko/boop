@@ -1,8 +1,9 @@
 #pragma once
 
 #include <initializer_list>
-#include <vector>
+#include <memory>
 #include <set>
+#include <vector>
 
 #include <cadical.hpp>
 
@@ -39,30 +40,33 @@ namespace boop::solver {
   private:
     int nVars_;
     int nClauses_;
-    CaDiCaL::Solver solver_;
+    std::unique_ptr<CaDiCaL::Solver> pSolver_;
   };
 
   // lifecycle
 
   CadicalSolver::CadicalSolver()
     : nVars_(0),
-      nClauses_(0) {
+      nClauses_(0),
+      pSolver_(std::make_unique<CaDiCaL::Solver>()) {
   }
 
   void CadicalSolver::Clear() {
-    solver_ = CaDiCaL::Solver();
+    nVars_ = 0;
+    nClauses_ = 0;
+    pSolver_ = std::make_unique<CaDiCaL::Solver>();
   }
 
   // variable
   
   int CadicalSolver::NewVar() {
     nVars_++;
-    return solver_.declare_one_more_variable();
+    return pSolver_->declare_one_more_variable();
   }
 
   int CadicalSolver::NewVars(int n) {
     nVars_ += n;
-    int nLit = solver_.declare_more_variables(n);
+    int nLit = pSolver_->declare_more_variables(n);
     return nLit + 1 - n;
   }
   
@@ -79,20 +83,20 @@ namespace boop::solver {
   template <class It>
   void CadicalSolver::AddClause(It it, It itEnd) {
     for(; it != itEnd; ++it) {
-      solver_.add(*it);
+      pSolver_->add(*it);
     }
-    solver_.add(0);
+    pSolver_->add(0);
     nClauses_++;
   }
 
   bool CadicalSolver::IsInconsistent() {
-    return solver_.inconsistent();
+    return pSolver_->inconsistent();
   }
 
   // option
   
   void CadicalSolver::SetConflictLimit(int nConflictLimit) {
-    solver_.limit("conflicts", nConflictLimit);
+    pSolver_->limit("conflicts", nConflictLimit);
   }
   
   // solve
@@ -100,13 +104,13 @@ namespace boop::solver {
   Status CadicalSolver::Solve(const std::vector<int> *vAssumptions, std::set<int> *sCore) {
     if(vAssumptions != nullptr) {
       for(int nLit : *vAssumptions) {
-        solver_.assume(nLit);
+        pSolver_->assume(nLit);
       }
     }
-    int nRes = solver_.solve();
+    int nRes = pSolver_->solve();
     if(vAssumptions != nullptr && sCore != nullptr) {
       for(int nLit : *vAssumptions) {
-        if(solver_.failed(nLit)) {
+        if(pSolver_->failed(nLit)) {
           sCore->insert(nLit);
         }
       }
@@ -124,9 +128,9 @@ namespace boop::solver {
   
   bool CadicalSolver::Value(int nLit) {
     if (nLit < 0) {
-      return solver_.val(nLit) < 0;
+      return pSolver_->val(nLit) < 0;
     }
-    return solver_.val(nLit) > 0;
+    return pSolver_->val(nLit) > 0;
   }
   
 } // namespace boop::solver
