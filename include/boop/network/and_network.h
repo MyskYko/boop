@@ -40,6 +40,7 @@ namespace boop {
     int GetNumPis() const;
     int GetNumInts() const;
     int GetNumPos() const;
+    int GetNumFanins() const;
     int GetNumLevels() const;
     int GetConst0() const;
     int GetPi(int nIdx) const;
@@ -434,6 +435,14 @@ namespace boop {
     return int_size(vvFaninEdges_[nId]);
   }
 
+  inline int AndNetwork::GetNumFanins() const {
+    int nFanins = 0;
+    ForEachInt([&](int nId) {
+      nFanins += GetNumFanins(nId);
+    });
+    return nFanins;
+  }
+
   inline int AndNetwork::GetNumFanouts(int nId) const {
     return vRefs_[nId];
   }
@@ -569,6 +578,57 @@ namespace boop {
     }
     EndTraversal();
     return vNeighbors;
+  }
+
+  template <template <typename...> typename Container, typename... Ts, template <typename...> typename Container2, typename... Ts2>
+  inline bool AndNetwork::IsReachable(const Container<Ts...> &srcs, const Container2<Ts2...> &dsts) {
+    if(srcs.empty() || dsts.empty()) {
+      return false;
+    }
+    unsigned nDst = StartTraversal(2);
+    for(int nId : dsts) {
+      vTrav_[nId] = nDst;
+    }
+    for(int nId : srcs) {
+      if(vTrav_[nId] == nDst) {
+        EndTraversal();
+        return true;
+      }
+      vTrav_[nId] = nTrav_;
+    }
+    auto it = lInts_.begin();
+    while(it != lInts_.end() && vTrav_[*it] != nTrav_) {
+      ++it;
+    }
+    for(; it != lInts_.end(); ++it) {
+      if(vTrav_[*it] == nTrav_) {
+        continue;
+      }
+      for(int nFaninEdge : vvFaninEdges_[*it]) {
+        if(vTrav_[Edge2Node(nFaninEdge)] == nTrav_) {
+          if(vTrav_[*it] == nDst) {
+            EndTraversal();
+            return true;
+          }
+          vTrav_[*it] = nTrav_;
+          break;
+        }
+      }
+    }
+    for(int nPo : vPos_) {
+      if(vTrav_[nPo] == nTrav_) {
+        continue;
+      }
+      if(vTrav_[GetFanin(nPo, 0)] == nTrav_) {
+        if(vTrav_[nPo] == nDst) {
+          EndTraversal();
+          return true;
+        }
+        vTrav_[nPo] = nTrav_;
+      }
+    }
+    EndTraversal();
+    return false;
   }
 
   template <template <typename...> typename Container, typename... Ts, template <typename...> typename Container2, typename... Ts2>
@@ -1321,7 +1381,7 @@ namespace boop {
             action.vFanins.push_back(nFi2);
             action.vIndices.push_back(nIdx2);
           } else if(fCompl2 != GetCompl(nId, nIdx3)) {
-            // duplication with differnt polarity, add const-0
+            // duplication with different polarity, add const-0
             vRefs_[nFi2]--;
             vRefs_[GetConst0()]++;
             it = vvFaninEdges_[nId].insert(it, Node2Edge(GetConst0(), false));

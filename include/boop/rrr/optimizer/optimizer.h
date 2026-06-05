@@ -197,8 +197,8 @@ namespace boop::rrr {
     void ApplyMultisetSampled(int k, const std::function<bool(const std::vector<int> &)> &fn);
 
     // run helper
-    template <typename ApplyFn, typename ResubFn>
-    void RunHelper(ApplyFn &&fnApply, const std::vector<ResubFn> &vResubs, const std::vector<std::string> &vNames, bool fStopAtChange, bool fRandomAddition);
+    template <typename ApplyFn>
+    void RunHelper(ApplyFn &&fnApply, const std::vector<std::function<bool(int, const std::vector<int> &)>> &vResubs, const std::vector<std::string> &vNames, bool fStopAtChange, bool fRandomAddition);
   };
 
   // lifecycle
@@ -266,7 +266,7 @@ namespace boop::rrr {
     case 2: {
       Cost cost = fnObjective_(pNtk_);
       while(true) {
-        RunHelper([&](auto &&fn) { ApplyReverseTopologically([&](int nId) { fn(nId); }); },
+        RunHelper([&](auto &&fn) { ApplyReverseTopologically([&](int nId) { return fn(nId); }); },
                   { [&](int nId, const std::vector<int> &vCands) { SingleResub(nId, vCands); return true; } },
                   {"single"}, false, false);
         RunHelper([&](auto &&fn) { ApplyReverseTopologically(std::forward<decltype(fn)>(fn)); },
@@ -492,7 +492,7 @@ namespace boop::rrr {
 
   template <typename Ntk, typename Ana>
   void Optimizer<Ntk, Ana>::SortFanins(int nId) {
-    switch(nSortType) {
+    switch(nSortType_) {
     case 0: // no sorting
       break;
     case 1: // prioritize internals
@@ -789,7 +789,7 @@ namespace boop::rrr {
   template <typename Ntk, typename Ana>
   bool Optimizer<Ntk, Ana>::RemoveRedundancyOneTraversal(bool fRandom, bool fSubRoutine) {
     TimePoint timeStart;
-    if(!fSubroutine) {
+    if(!fSubRoutine) {
       timeStart = GetCurrentTime();
     }
     bool fReduced = false;
@@ -1411,8 +1411,8 @@ namespace boop::rrr {
   // run helper
 
   template <typename Ntk, typename Ana>
-  template <typename ApplyFn, typename ResubFn>
-  void Optimizer<Ntk, Ana>::RunHelper(ApplyFn &&fnApply, const std::vector<ResubFn> &vResubs, const std::vector<std::string> &vNames, bool fStopAtChange, bool fRandomAddition) {
+  template <typename ApplyFn>
+  void Optimizer<Ntk, Ana>::RunHelper(ApplyFn &&fnApply, const std::vector<std::function<bool(int, const std::vector<int> &)>> &vResubs, const std::vector<std::string> &vNames, bool fStopAtChange, bool fRandomAddition) {
     assert(!vResubs.empty());
     assert(vResubs.size() == vNames.size());
     const bool fRandomSelection = vResubs.size() > 1;

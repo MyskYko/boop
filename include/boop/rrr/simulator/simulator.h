@@ -960,7 +960,7 @@ namespace boop::rrr {
         SimulateOneWord(nOffset);
       }
     }
-    // TODO: better to make network class clara out all backups on read unless fReuse (also on assign network?)
+    // TODO: better to make network class clear out all backups on read unless fReuse (also on assign network?)
   }
 
   template <typename Ntk>

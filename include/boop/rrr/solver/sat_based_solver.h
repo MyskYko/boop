@@ -284,13 +284,13 @@ namespace boop::rrr {
     }
     // reverse simulation
     if(fNoDontCare_) {
-      pNtk_->ForEachIntReverse([&](int nId) {
+      pNtk_->template ForEachInt<true>([&](int nId) {
         Justify(vValues_, nId);
       });
     } else {
       // pick po
       bool fFound = false;
-      pNtk_->ForEachPoDriverStop([&](int nFi) {
+      pNtk_->ForEachPoDriver([&](int nFi) {
         if(vVarLits_[nFi] != vVarLitsInv_[nFi] && vValues_[nFi] != vValuesInv_[nFi]) {
           vValues_[nFi] = DecideVarValue(vValues_[nFi]);
           vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
@@ -302,7 +302,7 @@ namespace boop::rrr {
       assert(fFound);
       // observability
       std::vector<bool> vVisited(pNtk_->GetNumNodes());
-      pNtk_->ForEachTfoReverse(nTarget_, false, [&](int nFo) {
+      pNtk_->template ForEachTfo<false, true, false, true>(nTarget_, [&](int nFo) {
         vVisited[nFo] = true;
         Justify(vValues_, nFo);
         Justify(vValuesInv_, nFo);
@@ -310,7 +310,7 @@ namespace boop::rrr {
       assert(vValues_[nTarget_] == rrrTRUE || vValues_[nTarget_] == rrrFALSE);
       assert(vValuesInv_[nTarget_] == rrrTRUE || vValuesInv_[nTarget_] == rrrFALSE);
       // justify
-      pNtk_->ForEachIntReverse([&](int nId) {
+      pNtk_->template ForEachInt<true>([&](int nId) {
         if(vVisited[nId]) {
           return;
         }

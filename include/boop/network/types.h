@@ -92,7 +92,7 @@ namespace boop {
     }
     if(action.fi != -1) {
       ss << delim;
-      PrintNext(ss, "fanin", (bool)action.c, action.fi);
+      PrintNext(ss, "fanin", static_cast<bool>(action.c), action.fi);
       delim = " , ";
     }
     if(action.idx != -1) {

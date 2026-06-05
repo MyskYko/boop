@@ -78,12 +78,12 @@ namespace boop::rrr {
     if(sim_.IsExhaustive()) {
       return true;
     }
-    SatResult r = sat_.CheckRedundancy(nId, nIdx);
-    if(r == UNSAT) {
+    typename Sat::Result r = sat_.CheckRedundancy(nId, nIdx);
+    if(r == Sat::Result::UNSAT) {
       Print(0, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "redundant");
       return true;
     }
-    if(r == SAT) {
+    if(r == Sat::Result::SAT) {
       Print(0, "node", nId, ",", "fanin", pNtk_->GetCompl(nId, nIdx), pNtk_->GetFanin(nId, nIdx), ",", "index", nIdx, ":", "NOT redundant");
       sim_.AddCex(sat_.GetCex());
       return false;
@@ -102,12 +102,12 @@ namespace boop::rrr {
     if(sim_.IsExhaustive()) {
       return true;
     }
-    SatResult r = sat_.CheckFeasibility(nId, nFi, fCompl);
-    if(r == UNSAT) {
+    typename Sat::Result r = sat_.CheckFeasibility(nId, nFi, fCompl);
+    if(r == Sat::Result::UNSAT) {
       Print(0, "node", nId, ",", "fanin", fCompl, nFi, ":", "feasible");
       return true;
     }
-    if(r == SAT) {
+    if(r == Sat::Result::SAT) {
       Print(0, "node", nId, ",", "fanin", fCompl, nFi, ":", "NOT feasible");
       sim_.AddCex(sat_.GetCex());
       return false;

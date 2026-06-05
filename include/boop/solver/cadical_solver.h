@@ -86,7 +86,7 @@ namespace boop::solver {
   }
 
   bool CadicalSolver::IsInconsistent() {
-    solver_.is_inconsistent();
+    return solver_.inconsistent();
   }
 
   // option

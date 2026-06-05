@@ -4,10 +4,23 @@
 #include <vector>
 #include <set>
 #include <cstdlib>
+#include <type_traits>
 
 BOOP_HEADER_START
 
 namespace boop::solver {
+
+  template <typename T, typename = void>
+  struct has_new_vars: std::false_type {};
+
+  template <typename T>
+  struct has_new_vars<T, std::void_t<decltype(std::declval<T &>().NewVars(std::declval<int>()))>>: std::true_type {};
+
+  template <typename T, typename = void>
+  struct has_is_inconsistent: std::false_type {};
+
+  template <typename T>
+  struct has_is_inconsistent<T, std::void_t<decltype(std::declval<T &>().IsInconsistent())>>: std::true_type {};
   
   enum class Status {
     SAT,
@@ -84,7 +97,7 @@ namespace boop::solver {
 
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
   int Solver<Internal, Logic, Cardi>::NewVars(int n) {
-    if constexpr(requires { internal_.NewVars(n); }) {
+    if constexpr(has_new_vars<Internal>::value) {
       return internal_.NewVars(n);
     }
     int nLit = -1;
@@ -149,7 +162,7 @@ namespace boop::solver {
 
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
   bool Solver<Internal, Logic, Cardi>::IsInconsistent() {
-    if constexpr(requires { internal_.IsInconsistent(); }) {
+    if constexpr(has_is_inconsistent<Internal>::value) {
       return internal_.IsInconsistent();
     }
     return false;

@@ -54,7 +54,7 @@ namespace boop {
     void Run();
     
   private:
-    static constexpr char *pCompress2rs = "balance -l; resub -K 6 -l; rewrite -l; resub -K 6 -N 2 -l; refactor -l; resub -K 8 -l; balance -l; resub -K 8 -N 2 -l; rewrite -l; resub -K 10 -l; rewrite -z -l; resub -K 10 -N 2 -l; balance -l; resub -K 12 -l; refactor -z -l; resub -K 12 -N 2 -l; rewrite -z -l; balance -l";
+    static constexpr const char *pCompress2rs = "balance -l; resub -K 6 -l; rewrite -l; resub -K 6 -N 2 -l; refactor -l; resub -K 8 -l; balance -l; resub -K 8 -N 2 -l; rewrite -l; resub -K 10 -l; rewrite -z -l; resub -K 10 -N 2 -l; balance -l; resub -K 12 -l; refactor -z -l; resub -K 12 -N 2 -l; rewrite -z -l; balance -l";
     
     struct Job {
       int nId;
@@ -122,7 +122,7 @@ namespace boop {
     void Print(int nVerboseLevel, const std::string &strPrefix, Args &&...args);
     std::string MakeNtkInfoString(const Ntk *pNtk, Cost cost) const;
     std::string MakeStepInfoString(const Ntk *pNtk, Cost cost, Cost costInitial, Duration duration) const;
-    void PrintSummary() const;
+    void PrintSummary();
 
     // time
     Seconds GetRemainingTime() const;
@@ -263,16 +263,16 @@ namespace boop {
   }
 
   template <typename Ntk, typename Opt, typename Prt>
-  void HeloScheduler<Ntk, Opt, Prt>::PrintSummary() const {
+  void HeloScheduler<Ntk, Opt, Prt>::PrintSummary() {
     Cost cost = par_.fnObjective(pNtk_);
     Duration duration = GetElapsedTime();
     Print(0, "\n", "stats summary", ":");
     for(std::string key: vStatsKeys_) {
-      Print(0, "\t", SW{30, true}, key, ":", SW{10}, mStatsSummary_[key]);
+      Print(0, "\t", SW{30, true}, key, ":", SW{10}, mStatsSummary_.at(key));
     }
     Print(0, "", "runtime summary", ":");
     for(std::string key: vTimesKeys_) {
-      Print(0, "\t", SW{30, true}, key, ":", mTimesSummary_[key], "s", "(", 100 * mTimesSummary_[key] / duration, "%", ")");
+      Print(0, "\t", SW{30, true}, key, ":", mTimesSummary_.at(key), "s", "(", 100 * mTimesSummary_.at(key) / duration, "%", ")");
     }
     Print(0, "", "end", ":", "cost", "=", cost, "(", 100 * (cost - costStart_) / costStart_, "%", ")", ",", "time", "=", duration, "s");
   }
@@ -585,6 +585,9 @@ namespace boop {
     fDeterministic_ = false; // deterministic anyway (wait for all jobs each round)
     pNtk_->Sweep();
     prt_.AssignNetwork(pNtk_);
+    prt_.SetPrintLine([&](const std::string &str) {
+      Print(-1, "", str);
+    });
     while(nCreatedJobs_ < par_.nJobs) {
       assert(par_.nParallelPartitions > 0);
       if(nCreatedJobs_ < nFinishedJobs_ + par_.nParallelPartitions) {
