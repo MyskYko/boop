@@ -207,8 +207,9 @@ namespace boop::rrr {
   Optimizer<Ntk, Ana>::Optimizer(const Parameter &par, std::function<Cost(Ntk *)> fnObjective)
     : pNtk_(nullptr),
       par_(par),
-      fnObjective_(std::move(fnObjective)),
       nSortType_(par.nSortType),
+      nTimeout_(0),
+      fnObjective_(std::move(fnObjective)),
       nSamples_(-1),
       nTargets_(-1),
       nMax_(-1),

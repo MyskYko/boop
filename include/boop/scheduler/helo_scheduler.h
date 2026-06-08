@@ -164,8 +164,8 @@ namespace boop {
       par_(par),
       fMultithreaded_(par_.nThreads > 1),
       fDeterministic_(par_.fDeterministic),
-      pOpt_(nullptr),
       prt_(par_.parPrt),
+      pOpt_(nullptr),
       nCreatedJobs_(0),
       nFinishedJobs_(0) {
 #ifdef BOOP_USE_THREADS
