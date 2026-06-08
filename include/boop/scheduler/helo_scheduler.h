@@ -182,7 +182,7 @@ namespace boop {
 #endif
     assert(!fMultithreaded_);
     pOpt_ = new Opt(par_.parOpt, par_.fnObjective);
-    Abc_Start();
+    StartAbc();
   }
 
   template <typename Ntk, typename Opt, typename Prt>
@@ -201,7 +201,7 @@ namespace boop {
     }
 #endif
     delete pOpt_;
-    Abc_Stop();
+    StopAbc();
   }
 
   // run
@@ -529,7 +529,7 @@ namespace boop {
 #ifdef BOOP_USE_THREADS
   template <typename Ntk, typename Opt, typename Prt>
   void HeloScheduler<Ntk, Opt, Prt>::Thread(const typename Opt::Parameter &parOpt) {
-    Abc_Start();
+    StartAbc();
     Opt opt(parOpt, par_.fnObjective);
     while(true) {
       Job *pJob = NULL;
@@ -540,7 +540,7 @@ namespace boop {
         }
         if(fTerminate_) {
           assert(qPendingJobs_.empty());
-          Abc_Stop();
+          StopAbc();
           return;
         }
         pJob = qPendingJobs_.front();

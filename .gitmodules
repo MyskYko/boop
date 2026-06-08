@@ -4,3 +4,6 @@
 [submodule "third_party/cadical"]
 	path = third_party/cadical
 	url = git@github.com:MyskYko/cadical.git
+[submodule "third_party/abc"]
+	path = third_party/abc
+	url = git@github.com:MyskYko/abc.git
