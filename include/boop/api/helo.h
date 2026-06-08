@@ -91,7 +91,6 @@ namespace boop {
     par.nParallelPartitions = params.nParallelPartitions;
     par.fOptOnInsert = params.fOptOnInsert;
 
-    par.parOpt.nVerbose = params.nVerbose;
     par.parOpt.nSortType = params.nSortType;
     par.parOpt.fSortInitial = params.fSortInitial;
     par.parOpt.fSortPerNode = params.fSortPerNode;
@@ -102,7 +101,6 @@ namespace boop {
     par.parOpt.fGreedy = params.fGreedy;
     par.parOpt.fNonlinearCost = params.fNonlinearCost;
 
-    par.parPrt.nVerbose = params.nVerbose;
     par.parPrt.nPartitionSize = params.nPartitionSize;
     par.parPrt.nPartitionSizeMin = params.nPartitionSizeMin;
     par.parPrt.nPartitionInputMax = params.nPartitionInputMax;
@@ -112,12 +110,12 @@ namespace boop {
 
   template <typename Par>
   inline void LowerAnalyzerParams(Par &par, const HeloParams &params) {
-    par.nVerbose = params.nVerbose;
+    (void)par;
+    (void)params;
   }
 
   template <typename Par>
   inline void LowerSimulatorParams(Par &par, const HeloParams &params) {
-    par.nVerbose = params.nVerbose;
     par.nWords = params.nWords;
     par.fSave = params.fSave;
     par.fKeepStimuli = params.fKeepStimuli;
@@ -125,7 +123,6 @@ namespace boop {
 
   template <typename Par>
   inline void LowerSatParams(Par &par, const HeloParams &params) {
-    par.nVerbose = params.nVerbose;
     par.nConflictLimit = params.nConflictLimit;
   }
 
