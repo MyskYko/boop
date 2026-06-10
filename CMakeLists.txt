@@ -2,11 +2,15 @@ cmake_minimum_required(VERSION 3.16)
 
 project(boop LANGUAGES C CXX)
 
-option(BOOP_BUILD_CLI "Build the boop command line executable" ON)
+option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
 option(BOOP_USE_ABC "Build boop with ABC integration" OFF)
+option(BOOP_USE_ARGPARSE "Build argv parsing support with argparse" ON)
+option(BOOP_USE_CADICAL_IN_ABC "Use the Cadical copy bundled in ABC" OFF)
 
-set(BOOP_ABC_LIBRARIES "" CACHE STRING "Additional libraries needed for ABC integration")
+if(BOOP_USE_CADICAL_IN_ABC AND NOT BOOP_USE_ABC)
+  message(FATAL_ERROR "BOOP_USE_CADICAL_IN_ABC requires BOOP_USE_ABC")
+endif()
 
 add_library(boop_headers INTERFACE)
 add_library(boop::headers ALIAS boop_headers)
@@ -22,7 +26,7 @@ if(BOOP_USE_THREADS)
 endif()
 
 if(BOOP_USE_ABC)
-  set(ABC_USE_NAMESPACE abc CACHE STRING "Namespace for ABC integration" FORCE)
+  set(ABC_USE_NAMESPACE abys_abc CACHE STRING "Namespace for ABC integration" FORCE)
   set(ABC_SKIP_TESTS ON CACHE BOOL "" FORCE)
   add_subdirectory(third_party/abc)
   get_target_property(BOOP_LIBABC_INTERFACE_OPTIONS libabc INTERFACE_COMPILE_OPTIONS)
@@ -31,26 +35,41 @@ if(BOOP_USE_ABC)
     set_target_properties(libabc PROPERTIES INTERFACE_COMPILE_OPTIONS "${BOOP_LIBABC_INTERFACE_OPTIONS}")
   endif()
   target_compile_definitions(boop_headers INTERFACE BOOP_USE_ABC)
+  target_link_libraries(boop_headers INTERFACE
+    libabc
+  )
 endif()
 
-set(ARGPARSE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(ARGPARSE_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
-set(ARGPARSE_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(third_party/argparse)
-
-add_subdirectory(third_party/cadical)
-
-if(BOOP_BUILD_CLI)
-  add_executable(boop src/main.cpp)
-  target_link_libraries(boop PRIVATE
-    boop::headers
+if(BOOP_USE_ARGPARSE)
+  target_compile_definitions(boop_headers INTERFACE BOOP_USE_ARGPARSE)
+  add_subdirectory(third_party/argparse)
+  target_link_libraries(boop_headers INTERFACE
     argparse::argparse
+  )
+endif()
+
+if(BOOP_USE_CADICAL_IN_ABC)
+  target_compile_definitions(boop_headers INTERFACE BOOP_USE_CADICAL_IN_ABC)
+else()
+  add_subdirectory(third_party/cadical)
+  target_link_libraries(boop_headers INTERFACE
     cadical
   )
-  if(BOOP_USE_ABC)
-    target_link_libraries(boop PRIVATE
-      libabc
-      ${BOOP_ABC_LIBRARIES}
-    )
-  endif()
+endif()
+
+file(GLOB BOOP_API_SOURCES CONFIGURE_DEPENDS src/api/*.cpp)
+foreach(BOOP_API_SOURCE ${BOOP_API_SOURCES})
+  get_filename_component(BOOP_API_NAME ${BOOP_API_SOURCE} NAME_WE)
+  add_library(boop_${BOOP_API_NAME} ${BOOP_API_SOURCE})
+  add_library(boop::${BOOP_API_NAME} ALIAS boop_${BOOP_API_NAME})
+  target_link_libraries(boop_${BOOP_API_NAME} PUBLIC
+    boop::headers
+  )
+endforeach()
+
+if(BOOP_BUILD_PROGRAMS)
+  add_executable(helo programs/helo.cpp)
+  target_link_libraries(helo PRIVATE
+    boop::helo
+  )
 endif()

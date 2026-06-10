@@ -5,7 +5,11 @@
 #include <set>
 #include <vector>
 
+#if defined(BOOP_USE_CADICAL_IN_ABC)
+#include <sat/cadical/cadical.hpp>
+#else
 #include <cadical.hpp>
+#endif
 
 BOOP_HEADER_START
 
@@ -38,9 +42,17 @@ namespace boop::solver {
     bool Value(int nLit);
 
   private:
+#if defined(BOOP_USE_CADICAL_IN_ABC) && defined(ABC_NAMESPACE)
+    using Solver = ABC_NAMESPACE::CaDiCaL::Solver;
+    using CadicalStatus = ABC_NAMESPACE::CaDiCaL::Status;
+#else
+    using Solver = CaDiCaL::Solver;
+    using CadicalStatus = CaDiCaL::Status;
+#endif
+
     int nVars_;
     int nClauses_;
-    std::unique_ptr<CaDiCaL::Solver> pSolver_;
+    std::unique_ptr<Solver> pSolver_;
   };
 
   // lifecycle
@@ -48,13 +60,13 @@ namespace boop::solver {
   CadicalSolver::CadicalSolver()
     : nVars_(0),
       nClauses_(0),
-      pSolver_(std::make_unique<CaDiCaL::Solver>()) {
+      pSolver_(std::make_unique<Solver>()) {
   }
 
   void CadicalSolver::Clear() {
     nVars_ = 0;
     nClauses_ = 0;
-    pSolver_ = std::make_unique<CaDiCaL::Solver>();
+    pSolver_ = std::make_unique<Solver>();
   }
 
   // variable
@@ -115,10 +127,10 @@ namespace boop::solver {
         }
       }
     }
-    if(CaDiCaL::Status::SATISFIABLE == nRes) {
+    if(CadicalStatus::SATISFIABLE == nRes) {
       return Status::SAT;
     }
-    if(CaDiCaL::Status::UNSATISFIABLE == nRes) {
+    if(CadicalStatus::UNSATISFIABLE == nRes) {
       return Status::UNSAT;
     }
     return Status::UNDET;
