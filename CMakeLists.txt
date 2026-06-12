@@ -10,6 +10,7 @@ option(BOOP_USE_ABC "Build boop with ABC integration" ON)
 option(BOOP_USE_MOCKTURTLE "Build boop with mockturtle integration" ON)
 option(BOOP_USE_ARGPARSE "Build argv parsing support with argparse" ON)
 option(BOOP_USE_CADICAL_IN_ABC "Use the Cadical copy bundled in ABC" OFF)
+option(BOOP_ENABLE_COVERAGE "Build boop with coverage instrumentation" OFF)
 
 if(BOOP_USE_CADICAL_IN_ABC AND NOT BOOP_USE_ABC)
   message(FATAL_ERROR "BOOP_USE_CADICAL_IN_ABC requires BOOP_USE_ABC")
@@ -21,6 +22,25 @@ target_compile_features(boop_headers INTERFACE cxx_std_20)
 target_include_directories(boop_headers INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
+
+if(BOOP_ENABLE_COVERAGE)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+    message(FATAL_ERROR "BOOP_ENABLE_COVERAGE requires GCC or Clang")
+  endif()
+
+  add_library(boop_coverage INTERFACE)
+  target_compile_options(boop_coverage INTERFACE
+    --coverage
+    -O0
+    -g
+  )
+  target_link_options(boop_coverage INTERFACE
+    --coverage
+  )
+  target_link_libraries(boop_headers INTERFACE
+    boop_coverage
+  )
+endif()
 
 if(BOOP_USE_THREADS)
   find_package(Threads REQUIRED)
