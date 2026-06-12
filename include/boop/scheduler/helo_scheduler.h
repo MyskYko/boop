@@ -21,6 +21,7 @@
 #endif
 
 #include "boop/interface/abc_interface.h"
+#include "boop/interface/mockturtle_interface.h"
 #include "boop/util/print.h"
 #include "boop/util/random.h"
 #include "boop/util/time.h"
@@ -141,10 +142,13 @@ private:
 
   // abc
   void CallAbc(Ntk *pNtk, std::string strCommand, Duration &duration);
+  void CallMockturtle(Ntk *pNtk, std::mt19937 &rng, Duration &duration);
 
   // execute jobs
   void ExecuteTranstochFlow(Opt &opt, Job *pJob, Duration &durationAbc);
   void ExecuteDeepFlow(Opt &opt, Job *pJob, Duration &durationAbc);
+  void ExecuteMockturtleDeepFlow(Opt &opt, Job *pJob, Duration &durationAbc,
+                                 Duration &durationMockturtle);
   void ExecuteAbcLoopFlow(Opt &opt, Job *pJob, Duration &durationAbc);
   void ExecuteJob(Opt &opt, Job *pJob);
 
@@ -336,6 +340,15 @@ void HeloScheduler<Ntk, Opt, Prt>::CallAbc(Ntk *pNtk, std::string strCommand,
   duration += get_duration(timeStartAbc, timeEndAbc);
 }
 
+template <typename Ntk, typename Opt, typename Prt>
+void HeloScheduler<Ntk, Opt, Prt>::CallMockturtle(Ntk *pNtk, std::mt19937 &rng,
+                                                  Duration &duration) {
+  TimePoint timeStartMockturtle = get_current_time();
+  MockturtlePerformLocal(pNtk, rng);
+  TimePoint timeEndMockturtle = get_current_time();
+  duration += get_duration(timeStartMockturtle, timeEndMockturtle);
+}
+
 // execute jobs
 
 template <typename Ntk, typename Opt, typename Prt>
@@ -451,6 +464,66 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteDeepFlow(Opt &opt, Job *pJob,
 }
 
 template <typename Ntk, typename Opt, typename Prt>
+void HeloScheduler<Ntk, Opt, Prt>::ExecuteMockturtleDeepFlow(
+    Opt &opt, Job *pJob, Duration &durationAbc, Duration &durationMockturtle) {
+  SimpleRNG rng;
+  for (int i = 0; i < 11; i++) {
+    rng(); // align with deepsyn
+  }
+  std::mt19937 rng2(pJob->nSeed);
+  int n = 0;
+  Cost cost = pJob->costInitial;
+  int nSlot = pJob->pNtk->Save();
+  for (int i = 0; i < 1000000; i++) {
+    if (GetRemainingTime() < 0) {
+      break;
+    }
+    bool fUseTwo = false;
+    unsigned uRand = rng();
+    bool fDch = uRand & 1;
+    int nComp = 1 + ((uRand >> 1) % 10);
+    bool fFx = (uRand >> 2) & 1;
+    int nLutSize = fUseTwo ? 2 + (i % 5) : 3 + (i % 4);
+    std::string strCommand = "&dch";
+    if (fDch) {
+      strCommand += " -f";
+    }
+    strCommand +=
+        "; &if -a -K " + std::to_string(nLutSize) + "; &mfs -e -W 20 -L 20";
+    if (fFx) {
+      strCommand += "; &fx; &st";
+    }
+    CallAbc(pJob->pNtk, strCommand, durationAbc);
+    for (int j = 0; j < nComp; j++) {
+      CallMockturtle(pJob->pNtk, rng2, durationMockturtle);
+    }
+    Print(1, pJob->strPrefix, "ite", i, ":", "cost", "=",
+          par_.fnObjective(pJob->pNtk));
+    for (int j = 0; j < n; j++) {
+      if (GetRemainingTime() < 0) {
+        break;
+      }
+      opt.Run(rng2(), GetRemainingTime());
+      int nCompRrr = 1 + (rng2() % 10);
+      for (int k = 0; k < nCompRrr; k++) {
+        CallMockturtle(pJob->pNtk, rng2, durationMockturtle);
+      }
+      Print(1, pJob->strPrefix, "rrr", j, ":", "cost", "=",
+            par_.fnObjective(pJob->pNtk));
+    }
+    Cost costNew = par_.fnObjective(pJob->pNtk);
+    if (costNew < cost) {
+      cost = costNew;
+      pJob->pNtk->Save(nSlot);
+    } else {
+      n++;
+    }
+  }
+  pJob->pNtk->Load(nSlot);
+  pJob->pNtk->PopBack();
+}
+
+template <typename Ntk, typename Opt, typename Prt>
 void HeloScheduler<Ntk, Opt, Prt>::ExecuteAbcLoopFlow(Opt &opt, Job *pJob,
                                                       Duration &durationAbc) {
   for (int i = 0; i < 100; i++) {
@@ -471,6 +544,7 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteJob(Opt &opt, Job *pJob) {
   opt.SetPrintLine(
       [&](const std::string &str) { Print(-1, pJob->strPrefix, str); });
   Duration durationAbc = 0;
+  Duration durationMockturtle = 0;
   switch (par_.nFlow) {
   case 0:
     opt.Run(pJob->nSeed, GetRemainingTime());
@@ -480,6 +554,9 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteJob(Opt &opt, Job *pJob) {
     break;
   case 2:
     ExecuteDeepFlow(opt, pJob, durationAbc);
+    break;
+  case 3:
+    ExecuteMockturtleDeepFlow(opt, pJob, durationAbc, durationMockturtle);
     break;
   case 4:
     ExecuteAbcLoopFlow(opt, pJob, durationAbc);
@@ -492,6 +569,7 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteJob(Opt &opt, Job *pJob) {
   pJob->summaryStats = opt.GetStatsSummary();
   pJob->summaryTimes = opt.GetTimesSummary();
   pJob->summaryTimes.emplace_back("abc", durationAbc);
+  pJob->summaryTimes.emplace_back("mockturtle", durationMockturtle);
   opt.ResetSummary();
 }
 

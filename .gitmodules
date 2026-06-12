@@ -7,3 +7,6 @@
 [submodule "third_party/abc"]
 	path = third_party/abc
 	url = git@github.com:MyskYko/abc.git
+[submodule "third_party/mockturtle"]
+	path = third_party/mockturtle
+	url = git@github.com:MyskYko/mockturtle.git

@@ -5,6 +5,7 @@ project(boop LANGUAGES C CXX)
 option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
 option(BOOP_USE_ABC "Build boop with ABC integration" OFF)
+option(BOOP_USE_MOCKTURTLE "Build boop with mockturtle integration" OFF)
 option(BOOP_USE_ARGPARSE "Build argv parsing support with argparse" ON)
 option(BOOP_USE_CADICAL_IN_ABC "Use the Cadical copy bundled in ABC" OFF)
 
@@ -40,6 +41,13 @@ if(BOOP_USE_ABC)
   )
 endif()
 
+if(BOOP_USE_MOCKTURTLE)
+  set(MOCKTURTLE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(MOCKTURTLE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(MOCKTURTLE_BUILD_EXPERIMENTS OFF CACHE BOOL "" FORCE)
+  add_subdirectory(third_party/mockturtle)
+endif()
+
 if(BOOP_USE_ARGPARSE)
   target_compile_definitions(boop_headers INTERFACE BOOP_USE_ARGPARSE)
   add_subdirectory(third_party/argparse)
@@ -57,6 +65,18 @@ else()
   )
 endif()
 
+add_library(boop_mockturtle_interface src/interface/mockturtle_interface.cpp)
+add_library(boop::mockturtle_interface ALIAS boop_mockturtle_interface)
+target_link_libraries(boop_mockturtle_interface PUBLIC
+  boop::headers
+)
+if(BOOP_USE_MOCKTURTLE)
+  target_compile_definitions(boop_mockturtle_interface PRIVATE BOOP_USE_MOCKTURTLE)
+  target_link_libraries(boop_mockturtle_interface PRIVATE
+    mockturtle
+  )
+endif()
+
 file(GLOB BOOP_API_SOURCES CONFIGURE_DEPENDS src/api/*.cpp)
 foreach(BOOP_API_SOURCE ${BOOP_API_SOURCES})
   get_filename_component(BOOP_API_NAME ${BOOP_API_SOURCE} NAME_WE)
@@ -66,6 +86,10 @@ foreach(BOOP_API_SOURCE ${BOOP_API_SOURCES})
     boop::headers
   )
 endforeach()
+
+target_link_libraries(boop_helo PUBLIC
+  boop::mockturtle_interface
+)
 
 if(BOOP_BUILD_PROGRAMS)
   add_executable(helo programs/helo.cpp)
