@@ -31,3 +31,6 @@ jobs:
 
       - name: Build
         run: cmake --build build/${{ matrix.name }} --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.name }} --output-on-failure

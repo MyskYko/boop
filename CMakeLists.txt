@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(boop LANGUAGES C CXX)
 
+enable_testing()
+
 option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
 option(BOOP_USE_ABC "Build boop with ABC integration" ON)
@@ -97,3 +99,5 @@ if(BOOP_BUILD_PROGRAMS)
     boop::helo
   )
 endif()
+
+add_subdirectory(test)
