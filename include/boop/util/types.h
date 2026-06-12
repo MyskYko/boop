@@ -12,15 +12,14 @@ BOOP_HEADER_START
 
 namespace boop {
 
-  using Seconds = int64_t;
-  using Clock = std::chrono::steady_clock;
-  using TimePoint = std::chrono::time_point<Clock>;
+using Seconds = int64_t;
+using Clock = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<Clock>;
 
-  using Duration = double;
-  using Cost = double;
+using Duration = double;
+using Cost = double;
 
-  template <typename T>
-  using Summary = std::vector<std::pair<std::string, T>>;
+template <typename T> using Summary = std::vector<std::pair<std::string, T>>;
 
 } // namespace boop
 

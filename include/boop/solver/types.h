@@ -6,11 +6,11 @@ BOOP_HEADER_START
 
 namespace boop::solver {
 
-  enum class Status {
-    SAT,
-    UNSAT,
-    UNDET,
-  };
+enum class Status {
+  SAT,
+  UNSAT,
+  UNDET,
+};
 
 } // namespace boop::solver
 
