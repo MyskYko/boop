@@ -6,7 +6,8 @@
 #include <utility>
 
 #include "boop/config.h"
-#include "boop/util/util.h"
+#include "boop/util/print.h"
+#include "boop/util/types.h"
 
 BOOP_HEADER_START
 

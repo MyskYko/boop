@@ -14,7 +14,10 @@
 #include "boop/network/types.h"
 #include "boop/rrr/simulator/vec_ops.h"
 #include "boop/rrr/types.h"
-#include "boop/util/util.h"
+#include "boop/util/print.h"
+#include "boop/util/size.h"
+#include "boop/util/time.h"
+#include "boop/util/types.h"
 
 BOOP_HEADER_START
 

@@ -12,7 +12,9 @@
 
 #include "boop/config.h"
 #include "boop/network/types.h"
-#include "boop/util/util.h"
+#include "boop/util/functional.h"
+#include "boop/util/print.h"
+#include "boop/util/size.h"
 
 BOOP_HEADER_START
 

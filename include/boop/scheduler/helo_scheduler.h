@@ -21,7 +21,10 @@
 #endif
 
 #include "boop/interface/abc_interface.h"
-#include "boop/util/util.h"
+#include "boop/util/print.h"
+#include "boop/util/random.h"
+#include "boop/util/time.h"
+#include "boop/util/types.h"
 
 BOOP_HEADER_START
 

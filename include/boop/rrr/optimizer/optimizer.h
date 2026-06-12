@@ -15,7 +15,11 @@
 
 #include "boop/config.h"
 #include "boop/network/types.h"
-#include "boop/util/util.h"
+#include "boop/util/combination.h"
+#include "boop/util/print.h"
+#include "boop/util/size.h"
+#include "boop/util/time.h"
+#include "boop/util/types.h"
 
 BOOP_HEADER_START
 

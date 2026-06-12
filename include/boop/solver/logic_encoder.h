@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "boop/config.h"
-#include "boop/util/util.h"
+#include "boop/util/size.h"
 
 BOOP_HEADER_START
 
