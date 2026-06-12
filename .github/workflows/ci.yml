@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            options: ""
+          - name: abc-cadical
+            options: "-DBOOP_USE_CADICAL_IN_ABC=ON"
+          - name: without-abc-mockturtle
+            options: "-DBOOP_USE_ABC=OFF -DBOOP_USE_MOCKTURTLE=OFF"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -S . -B build/${{ matrix.name }} -DCMAKE_BUILD_TYPE=Release ${{ matrix.options }}
+
+      - name: Build
+        run: cmake --build build/${{ matrix.name }} --parallel 2

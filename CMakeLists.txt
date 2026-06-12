@@ -4,8 +4,8 @@ project(boop LANGUAGES C CXX)
 
 option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
-option(BOOP_USE_ABC "Build boop with ABC integration" OFF)
-option(BOOP_USE_MOCKTURTLE "Build boop with mockturtle integration" OFF)
+option(BOOP_USE_ABC "Build boop with ABC integration" ON)
+option(BOOP_USE_MOCKTURTLE "Build boop with mockturtle integration" ON)
 option(BOOP_USE_ARGPARSE "Build argv parsing support with argparse" ON)
 option(BOOP_USE_CADICAL_IN_ABC "Use the Cadical copy bundled in ABC" OFF)
 
