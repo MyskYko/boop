@@ -12,17 +12,20 @@ namespace boop {
 
 static inline TimePoint get_current_time() { return Clock::now(); }
 
-static inline Seconds get_duration_in_seconds(TimePoint start, TimePoint end) {
-  Seconds t =
-      std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
-  assert(t >= 0);
-  return t;
+static inline Seconds get_duration_in_seconds(TimePoint timeStart,
+                                              TimePoint timeEnd) {
+  Seconds nSeconds =
+      std::chrono::duration_cast<std::chrono::seconds>(timeEnd - timeStart)
+          .count();
+  assert(nSeconds >= 0);
+  return nSeconds;
 }
 
-static inline Duration get_duration(TimePoint start, TimePoint end) {
-  Duration t = std::chrono::duration<Duration>(end - start).count();
-  assert(t >= 0);
-  return t;
+static inline Duration get_duration(TimePoint timeStart, TimePoint timeEnd) {
+  Duration duration =
+      std::chrono::duration<Duration>(timeEnd - timeStart).count();
+  assert(duration >= 0);
+  return duration;
 }
 
 } // namespace boop

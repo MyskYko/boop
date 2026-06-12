@@ -140,7 +140,7 @@ private:
   Duration GetElapsedTime() const;
 
   // abc
-  void CallAbc(Ntk *pNtk, std::string command, Duration &duration);
+  void CallAbc(Ntk *pNtk, std::string strCommand, Duration &duration);
 
   // execute jobs
   void ExecuteTranstochFlow(Opt &opt, Job *pJob, Duration &durationAbc);
@@ -277,13 +277,14 @@ void HeloScheduler<Ntk, Opt, Prt>::PrintSummary() {
   Cost cost = par_.fnObjective(pNtk_);
   Duration duration = GetElapsedTime();
   Print(0, "\n", "stats summary", ":");
-  for (std::string key : vStatsKeys_) {
-    Print(0, "\t", SW{30, true}, key, ":", SW{10}, mStatsSummary_.at(key));
+  for (std::string strKey : vStatsKeys_) {
+    Print(0, "\t", SW{30, true}, strKey, ":", SW{10},
+          mStatsSummary_.at(strKey));
   }
   Print(0, "", "runtime summary", ":");
-  for (std::string key : vTimesKeys_) {
-    Print(0, "\t", SW{30, true}, key, ":", mTimesSummary_.at(key), "s", "(",
-          100 * mTimesSummary_.at(key) / duration, "%", ")");
+  for (std::string strKey : vTimesKeys_) {
+    Print(0, "\t", SW{30, true}, strKey, ":", mTimesSummary_.at(strKey), "s",
+          "(", 100 * mTimesSummary_.at(strKey) / duration, "%", ")");
   }
   Print(0, "", "end", ":", "cost", "=", cost, "(",
         100 * (cost - costStart_) / costStart_, "%", ")", ",", "time", "=",
@@ -315,14 +316,14 @@ Duration HeloScheduler<Ntk, Opt, Prt>::GetElapsedTime() const {
 // abc
 
 template <typename Ntk, typename Opt, typename Prt>
-void HeloScheduler<Ntk, Opt, Prt>::CallAbc(Ntk *pNtk, std::string command,
+void HeloScheduler<Ntk, Opt, Prt>::CallAbc(Ntk *pNtk, std::string strCommand,
                                            Duration &duration) {
 #ifdef BOOP_USE_THREADS
   if (fMultithreaded_) {
     {
       std::unique_lock<std::mutex> l(mutexAbc_);
       TimePoint timeStartAbc = get_current_time();
-      Abc9Execute(pNtk, command);
+      Abc9Execute(pNtk, strCommand);
       TimePoint timeEndAbc = get_current_time();
       duration += get_duration(timeStartAbc, timeEndAbc);
     }
@@ -330,7 +331,7 @@ void HeloScheduler<Ntk, Opt, Prt>::CallAbc(Ntk *pNtk, std::string command,
   }
 #endif
   TimePoint timeStartAbc = get_current_time();
-  Abc9Execute(pNtk, command);
+  Abc9Execute(pNtk, strCommand);
   TimePoint timeEndAbc = get_current_time();
   duration += get_duration(timeStartAbc, timeEndAbc);
 }
@@ -393,10 +394,10 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteDeepFlow(Opt &opt, Job *pJob,
       break;
     }
     bool fUseTwo = false;
-    unsigned nRand = rng();
-    bool fDch = nRand & 1;
-    int nComp = (nRand >> 1) & 1; // align with deepsyn
-    bool fFx = (nRand >> 2) & 1;
+    unsigned uRand = rng();
+    bool fDch = uRand & 1;
+    int nComp = (uRand >> 1) & 1; // align with deepsyn
+    bool fFx = (uRand >> 2) & 1;
     int nLutSize = fUseTwo ? 2 + (i % 5) : 3 + (i % 4);
     std::string strComp;
     if (nComp == 3) {
@@ -651,7 +652,7 @@ void HeloScheduler<Ntk, Opt, Prt>::RunWithPartitioning() {
       prt_.AssignNetwork(pNtk_);
       Cost cost = par_.fnObjective(pNtk_);
       Print(0, "", "c2rs; dc2", ":",
-            std::string(8 + 3 * PrintFormat::int_width, ' '),
+            std::string(8 + 3 * PrintFormat::nIntWidth, ' '),
             MakeStepInfoString(pNtk_, cost, costInitial, duration));
     }
   }
@@ -675,7 +676,7 @@ void HeloScheduler<Ntk, Opt, Prt>::RunWithPartitioning() {
     prt_.AssignNetwork(pNtk_);
     Cost cost = par_.fnObjective(pNtk_);
     Print(0, "", "c2rs; dc2", ":",
-          std::string(8 + 3 * PrintFormat::int_width, ' '),
+          std::string(8 + 3 * PrintFormat::nIntWidth, ' '),
           MakeStepInfoString(pNtk_, cost, costInitial, duration));
   }
 }

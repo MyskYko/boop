@@ -434,7 +434,7 @@ void SatBasedSolver<Ntk, Sol>::ActionCallback(const Action &action) {
   }
   switch (action.type) {
   case REMOVE_FANIN:
-    if (action.id != nTarget_) {
+    if (action.nId != nTarget_) {
       fUpdate_ = true;
     }
     break;
@@ -442,12 +442,12 @@ void SatBasedSolver<Ntk, Sol>::ActionCallback(const Action &action) {
     break;
   case REMOVE_BUFFER:
   case REMOVE_CONST:
-    if (action.id == nTarget_) {
+    if (action.nId == nTarget_) {
       nTarget_ = -1;
     }
     break;
   case ADD_FANIN:
-    if (action.id != nTarget_) {
+    if (action.nId != nTarget_) {
       fUpdate_ = true;
     }
     break;
@@ -481,10 +481,10 @@ void SatBasedSolver<Ntk, Sol>::ActionCallback(const Action &action) {
 
 template <typename Ntk, typename Sol>
 void SatBasedSolver<Ntk, Sol>::EncodeNode(std::vector<int> &vVarLits, int nId) {
-  vVarLits[nId] = sol_.one;
+  vVarLits[nId] = sol_.nOne;
   assert(pNtk_->GetNodeType(nId) == AND);
   pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
-    if (vVarLits[nId] == sol_.one) {
+    if (vVarLits[nId] == sol_.nOne) {
       vVarLits[nId] = sol_.NotCond(vVarLits[nFi], fCompl);
     } else {
       int nLit = sol_.NotCond(vVarLits[nFi], fCompl);
@@ -503,7 +503,7 @@ void SatBasedSolver<Ntk, Sol>::EncodeMiter() {
   fTrivialUnsat_ = false;
   fNoDontCare_ = false;
   vVarLits_.resize(pNtk_->GetNumNodes());
-  vVarLits_[pNtk_->GetConst0()] = sol_.zero;
+  vVarLits_[pNtk_->GetConst0()] = sol_.nZero;
   pNtk_->ForEachPi([&](int nId) { vVarLits_[nId] = sol_.NewVar(); });
   Print(0, "encoding network");
   pNtk_->ForEachInt([&](int nId) { EncodeNode(vVarLits_, nId); });

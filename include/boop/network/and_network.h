@@ -181,7 +181,7 @@ private:
 
   // traversal state
   bool fLockTrav_;
-  unsigned nTrav_;
+  unsigned uTrav_;
   std::vector<unsigned> vTrav_;
 
   // constant propagation state
@@ -209,10 +209,10 @@ private:
   bool ForEachTfiRec(int nId, const Func &func);
   template <bool fPi = true, bool fGlobalStop = true, bool fReverse = false,
             typename It, typename Func>
-  void ForEachTfiTopoInt(It it, unsigned nSkip, const Func &func);
+  void ForEachTfiTopoInt(It it, unsigned uSkip, const Func &func);
   template <bool fPo = true, bool fGlobalStop = true, bool fReverse = false,
             typename It, typename Func>
-  void ForEachTfoInt(It it, unsigned nSkip, const Func &func);
+  void ForEachTfoInt(It it, unsigned uSkip, const Func &func);
   void Copy(const AndNetwork &from);
   void TakenAction(const Action &action) const;
 };
@@ -220,14 +220,14 @@ private:
 // lifecycle
 
 inline AndNetwork::AndNetwork()
-    : nNodes_(0), fLockTrav_(false), nTrav_(0), fPropagating_(false) {
+    : nNodes_(0), fLockTrav_(false), uTrav_(0), fPropagating_(false) {
   vvFaninEdges_.emplace_back();
   vRefs_.push_back(0);
   nNodes_++;
 }
 
 inline AndNetwork::AndNetwork(const AndNetwork &other)
-    : fLockTrav_(false), nTrav_(0), fPropagating_(false) {
+    : fLockTrav_(false), uTrav_(0), fPropagating_(false) {
   Copy(other);
 }
 
@@ -244,7 +244,7 @@ inline void AndNetwork::Clear(bool fClearNetwork, bool fClearCallbacks,
     vvFaninEdges_.clear();
     vRefs_.clear();
     fLockTrav_ = false;
-    nTrav_ = 0;
+    uTrav_ = 0;
     vTrav_.clear();
     fPropagating_ = false;
     vvFaninEdges_.emplace_back();
@@ -510,10 +510,10 @@ inline bool AndNetwork::IsReconvergent(int nId) {
   if (GetNumFanouts(nId) <= 1) {
     return false;
   }
-  unsigned nTravStart = StartTraversal(GetNumFanouts(nId));
+  unsigned uTravStart = StartTraversal(GetNumFanouts(nId));
   int nIdx = 0;
   ForEachFanout<false, false, false>(nId, [&](int nFo) {
-    vTrav_[nFo] = nTravStart + nIdx;
+    vTrav_[nFo] = uTravStart + nIdx;
     ++nIdx;
   });
   if (nIdx <= 1) {
@@ -521,7 +521,7 @@ inline bool AndNetwork::IsReconvergent(int nId) {
     return false;
   }
   auto it = lInts_.begin();
-  while (it != lInts_.end() && vTrav_[*it] < nTravStart) {
+  while (it != lInts_.end() && vTrav_[*it] < uTravStart) {
     ++it;
   }
   if (it != lInts_.end()) {
@@ -530,8 +530,8 @@ inline bool AndNetwork::IsReconvergent(int nId) {
   for (; it != lInts_.end(); ++it) {
     for (int nFaninEdge : vvFaninEdges_[*it]) {
       int nFi = Edge2Node(nFaninEdge);
-      if (vTrav_[nFi] >= nTravStart) {
-        if (vTrav_[*it] >= nTravStart && vTrav_[*it] != vTrav_[nFi]) {
+      if (vTrav_[nFi] >= uTravStart) {
+        if (vTrav_[*it] >= uTravStart && vTrav_[*it] != vTrav_[nFi]) {
           EndTraversal();
           return true;
         }
@@ -546,7 +546,7 @@ inline bool AndNetwork::IsReconvergent(int nId) {
 inline std::vector<int> AndNetwork::GetNeighbors(int nId, bool fPis,
                                                  int nHops) {
   StartTraversal();
-  vTrav_[nId] = nTrav_;
+  vTrav_[nId] = uTrav_;
   std::vector<int> vPrevs;
   std::vector<int> vNexts;
   vNexts.push_back(nId);
@@ -554,15 +554,15 @@ inline std::vector<int> AndNetwork::GetNeighbors(int nId, bool fPis,
     vPrevs.swap(vNexts);
     for (int nNode : vPrevs) {
       ForEachFanin(nNode, [&](int nFi) {
-        if (vTrav_[nFi] != nTrav_) {
+        if (vTrav_[nFi] != uTrav_) {
           vNexts.push_back(nFi);
-          vTrav_[nFi] = nTrav_;
+          vTrav_[nFi] = uTrav_;
         }
       });
       ForEachFanout<false, false, false>(nNode, [&](int nFo) {
-        if (vTrav_[nFo] != nTrav_) {
+        if (vTrav_[nFo] != uTrav_) {
           vNexts.push_back(nFo);
-          vTrav_[nFo] = nTrav_;
+          vTrav_[nFo] = uTrav_;
         }
       });
     }
@@ -572,13 +572,13 @@ inline std::vector<int> AndNetwork::GetNeighbors(int nId, bool fPis,
   std::vector<int> vNeighbors;
   if (fPis) {
     ForEachPiInt([&](int nId) {
-      if (vTrav_[nId] == nTrav_) {
+      if (vTrav_[nId] == uTrav_) {
         vNeighbors.push_back(nId);
       }
     });
   } else {
     ForEachInt([&](int nId) {
-      if (vTrav_[nId] == nTrav_) {
+      if (vTrav_[nId] == uTrav_) {
         vNeighbors.push_back(nId);
       }
     });
@@ -594,46 +594,46 @@ inline bool AndNetwork::IsReachable(const Container<Ts...> &srcs,
   if (srcs.empty() || dsts.empty()) {
     return false;
   }
-  unsigned nDst = StartTraversal(2);
+  unsigned uDst = StartTraversal(2);
   for (int nId : dsts) {
-    vTrav_[nId] = nDst;
+    vTrav_[nId] = uDst;
   }
   for (int nId : srcs) {
-    if (vTrav_[nId] == nDst) {
+    if (vTrav_[nId] == uDst) {
       EndTraversal();
       return true;
     }
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
   }
   auto it = lInts_.begin();
-  while (it != lInts_.end() && vTrav_[*it] != nTrav_) {
+  while (it != lInts_.end() && vTrav_[*it] != uTrav_) {
     ++it;
   }
   for (; it != lInts_.end(); ++it) {
-    if (vTrav_[*it] == nTrav_) {
+    if (vTrav_[*it] == uTrav_) {
       continue;
     }
     for (int nFaninEdge : vvFaninEdges_[*it]) {
-      if (vTrav_[Edge2Node(nFaninEdge)] == nTrav_) {
-        if (vTrav_[*it] == nDst) {
+      if (vTrav_[Edge2Node(nFaninEdge)] == uTrav_) {
+        if (vTrav_[*it] == uDst) {
           EndTraversal();
           return true;
         }
-        vTrav_[*it] = nTrav_;
+        vTrav_[*it] = uTrav_;
         break;
       }
     }
   }
   for (int nPo : vPos_) {
-    if (vTrav_[nPo] == nTrav_) {
+    if (vTrav_[nPo] == uTrav_) {
       continue;
     }
-    if (vTrav_[GetFanin(nPo, 0)] == nTrav_) {
-      if (vTrav_[nPo] == nDst) {
+    if (vTrav_[GetFanin(nPo, 0)] == uTrav_) {
+      if (vTrav_[nPo] == uDst) {
         EndTraversal();
         return true;
       }
-      vTrav_[nPo] = nTrav_;
+      vTrav_[nPo] = uTrav_;
     }
   }
   EndTraversal();
@@ -647,34 +647,34 @@ inline std::vector<int> AndNetwork::GetInners(const Container<Ts...> &srcs,
   if (srcs.empty() || dsts.empty()) {
     return std::vector<int>();
   }
-  unsigned nTravStart = StartTraversal(4);
-  unsigned nDst = nTravStart;
-  unsigned nTfo = nTravStart + 1;
-  unsigned nInner = nTravStart + 2;
+  unsigned uTravStart = StartTraversal(4);
+  unsigned uDst = uTravStart;
+  unsigned uTfo = uTravStart + 1;
+  unsigned uInner = uTravStart + 2;
   for (int nId : dsts) {
-    vTrav_[nId] = nDst;
+    vTrav_[nId] = uDst;
   }
   for (int nId : srcs) {
-    if (vTrav_[nId] == nDst) {
-      vTrav_[nId] = nInner;
+    if (vTrav_[nId] == uDst) {
+      vTrav_[nId] = uInner;
     } else {
-      vTrav_[nId] = nTfo;
+      vTrav_[nId] = uTfo;
     }
   }
   auto it = lInts_.begin();
-  while (it != lInts_.end() && vTrav_[*it] != nTfo) {
+  while (it != lInts_.end() && vTrav_[*it] != uTfo) {
     ++it;
   }
   for (; it != lInts_.end(); ++it) {
-    if (vTrav_[*it] >= nTfo) { // TFO or inner
+    if (vTrav_[*it] >= uTfo) { // TFO or inner
       continue;
     }
     for (int nFaninEdge : vvFaninEdges_[*it]) {
-      if (vTrav_[Edge2Node(nFaninEdge)] == nTfo) {
-        if (vTrav_[*it] == nDst) {
-          vTrav_[*it] = nInner;
+      if (vTrav_[Edge2Node(nFaninEdge)] == uTfo) {
+        if (vTrav_[*it] == uDst) {
+          vTrav_[*it] = uInner;
         } else {
-          vTrav_[*it] = nTfo;
+          vTrav_[*it] = uTfo;
         }
         break;
       }
@@ -682,11 +682,11 @@ inline std::vector<int> AndNetwork::GetInners(const Container<Ts...> &srcs,
   }
   std::vector<int> vInners;
   for (int nId : dsts) {
-    if (vTrav_[nId] == nInner) {
+    if (vTrav_[nId] == uInner) {
       vInners.push_back(nId);
-      vTrav_[nId] = nTrav_;
+      vTrav_[nId] = uTrav_;
       ForEachTfiRec(nId, [&](int nFi) {
-        if (vTrav_[nFi] == nTfo || vTrav_[nFi] == nInner) {
+        if (vTrav_[nFi] == uTfo || vTrav_[nFi] == uInner) {
           vInners.push_back(nFi);
         }
       });
@@ -1030,14 +1030,14 @@ inline void AndNetwork::ForEachTfi(int nId, const Func &func) {
   StartTraversal();
   if constexpr (fTopo) {
     ForEachFanin<false, fPi, false>(nId,
-                                    [&](int nFi) { vTrav_[nFi] = nTrav_; });
+                                    [&](int nFi) { vTrav_[nFi] = uTrav_; });
     auto it = lInts_.rbegin();
     if (IsInt(nId)) {
       it = std::find(it, lInts_.rend(), nId);
       assert(it != lInts_.rend());
       ++it;
     }
-    ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, nTrav_, func);
+    ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, uTrav_, func);
   } else {
     if constexpr (fReverse) {
       std::vector<int> vTfi;
@@ -1068,13 +1068,13 @@ inline void AndNetwork::ForEachTfiEnd(int nId, const Container<Ts...> &ends,
     return;
   }
   if constexpr (fTopo) {
-    unsigned nSkip = StartTraversal(2);
+    unsigned uSkip = StartTraversal(2);
     for (int nEnd : ends) {
-      vTrav_[nEnd] = nSkip;
+      vTrav_[nEnd] = uSkip;
     }
     ForEachFanin<false, fPi, false>(nId, [&](int nFi) {
-      if (vTrav_[nFi] != nSkip) {
-        vTrav_[nFi] = nTrav_;
+      if (vTrav_[nFi] != uSkip) {
+        vTrav_[nFi] = uTrav_;
       }
     });
     auto it = lInts_.rbegin();
@@ -1083,11 +1083,11 @@ inline void AndNetwork::ForEachTfiEnd(int nId, const Container<Ts...> &ends,
       assert(it != lInts_.rend());
       ++it;
     }
-    ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, nSkip, func);
+    ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, uSkip, func);
   } else {
     StartTraversal();
     for (int nEnd : ends) {
-      vTrav_[nEnd] = nTrav_;
+      vTrav_[nEnd] = uTrav_;
     }
     if constexpr (fReverse) {
       std::vector<int> vTfi;
@@ -1117,13 +1117,13 @@ inline void AndNetwork::ForEachTfis(const Container<Ts...> &ids,
   }
   StartTraversal();
   for (int nId : ids) {
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
   }
   auto it = lInts_.rbegin();
-  while (it != lInts_.rend() && vTrav_[*it] != nTrav_) {
+  while (it != lInts_.rend() && vTrav_[*it] != uTrav_) {
     ++it;
   }
-  ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, nTrav_, func);
+  ForEachTfiTopoInt<fPi, fGlobalStop, fReverse>(it, uTrav_, func);
   EndTraversal();
 }
 
@@ -1139,14 +1139,14 @@ inline void AndNetwork::ForEachTfo(int nId, const Func &func) {
     return;
   }
   StartTraversal();
-  vTrav_[nId] = nTrav_;
+  vTrav_[nId] = uTrav_;
   auto it = lInts_.begin();
   if (IsInt(nId)) {
     it = std::find(it, lInts_.end(), nId);
     assert(it != lInts_.end());
     ++it;
   }
-  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, nTrav_, func);
+  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, uTrav_, func);
   EndTraversal();
 }
 
@@ -1164,18 +1164,18 @@ inline void AndNetwork::ForEachTfoEnd(int nId, const Container<Ts...> &ends,
   if (GetNumFanouts(nId) == 0) {
     return;
   }
-  unsigned nSkip = StartTraversal(2);
+  unsigned uSkip = StartTraversal(2);
   for (int nEnd : ends) {
-    vTrav_[nEnd] = nSkip;
+    vTrav_[nEnd] = uSkip;
   }
-  vTrav_[nId] = nTrav_;
+  vTrav_[nId] = uTrav_;
   auto it = lInts_.begin();
   if (IsInt(nId)) {
     it = std::find(it, lInts_.end(), nId);
     assert(it != lInts_.end());
     ++it;
   }
-  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, nSkip, func);
+  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, uSkip, func);
   EndTraversal();
 }
 
@@ -1190,19 +1190,19 @@ inline void AndNetwork::ForEachTfos(const Container<Ts...> &ids,
     static_assert(!returns_bool_v<Func, int>,
                   "reverse TFOs traversal does not support stop callbacks");
   }
-  unsigned nSkip = StartTraversal(2);
+  unsigned uSkip = StartTraversal(2);
   bool fHasNonInt = false;
   for (int nId : ids) {
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
     fHasNonInt |= !IsInt(nId);
   }
   auto it = lInts_.begin();
   if (!fHasNonInt) {
-    while (it != lInts_.end() && vTrav_[*it] != nTrav_) {
+    while (it != lInts_.end() && vTrav_[*it] != uTrav_) {
       ++it;
     }
   }
-  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, nSkip, func);
+  ForEachTfoInt<fPo, fGlobalStop, fReverse>(it, uSkip, func);
   EndTraversal();
 }
 
@@ -1222,10 +1222,10 @@ AndNetwork::Extract(const Container<Ts...> &ids,
   }
   StartTraversal();
   for (int nId : ids) {
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
   }
   ForEachInt([&](int nId) {
-    if (vTrav_[nId] == nTrav_) {
+    if (vTrav_[nId] == uTrav_) {
       m[nId] = pNtk->CreateNode();
       pNtk->lInts_.push_back(m[nId]);
       pNtk->sInts_.insert(m[nId]);
@@ -1257,28 +1257,28 @@ inline void AndNetwork::Read(const AndNetwork &from) {
 
 template <typename Ntk, typename Reader>
 inline int AndNetwork::Read(const Ntk &from, const Reader &reader) {
-  int r = 0;
+  int nResult = 0;
   Clear(true, false, false);
   if constexpr (returns_int_v<Reader, const Ntk &, AndNetwork *>) {
-    r = reader(from, this);
+    nResult = reader(from, this);
   } else {
     reader(from, this);
   }
   Action action;
   action.type = READ;
   TakenAction(action);
-  return r;
+  return nResult;
 }
 
 inline void AndNetwork::RemoveFanin(int nId, int nIdx) {
   Action action;
   action.type = REMOVE_FANIN;
-  action.id = nId;
-  action.idx = nIdx;
+  action.nId = nId;
+  action.nIdx = nIdx;
   int nFi = GetFanin(nId, nIdx);
   bool fCompl = GetCompl(nId, nIdx);
-  action.fi = nFi;
-  action.c = fCompl;
+  action.nFi = nFi;
+  action.fCompl = fCompl;
   vRefs_[nFi]--;
   vvFaninEdges_[nId].erase(vvFaninEdges_[nId].begin() + nIdx);
   TakenAction(action);
@@ -1288,7 +1288,7 @@ inline void AndNetwork::RemoveUnused(int nId, bool fRecursive, bool fSweeping) {
   assert(vRefs_[nId] == 0);
   Action action;
   action.type = REMOVE_UNUSED;
-  action.id = nId;
+  action.nId = nId;
   ForEachFanin(nId, [&](int nFi) {
     action.vFanins.push_back(nFi);
     vRefs_[nFi]--;
@@ -1325,15 +1325,15 @@ inline void AndNetwork::RemoveBuffer(int nId) {
     if (nIdx2 != -1 && GetCompl(nFo, nIdx2) == (fCompl ^ fFoCompl)) {
       RemoveFanin(nFo, nIdx);
       if (fPropagating_ && GetNumFanins(nFo) == 1) {
-        vTrav_[nFo] = nTrav_;
+        vTrav_[nFo] = uTrav_;
       }
     }
   });
   Action action;
   action.type = REMOVE_BUFFER;
-  action.id = nId;
-  action.fi = nFi;
-  action.c = fCompl;
+  action.nId = nId;
+  action.nFi = nFi;
+  action.fCompl = fCompl;
   ForEachFanout<true, true, false>(nId, [&](int nFo, int nIdx, bool fFoCompl) {
     action.vFanouts.push_back(nFo);
     int nIdx2 = FindFanin(nFo, nFi);
@@ -1343,7 +1343,7 @@ inline void AndNetwork::RemoveBuffer(int nId) {
       vRefs_[GetConst0()]++;
       vvFaninEdges_[nFo][nIdx] = Node2Edge(GetConst0(), false);
       if (fPropagating_) {
-        vTrav_[nFo] = nTrav_;
+        vTrav_[nFo] = uTrav_;
       }
     } else { // otherwise, substitute with fanin
       vvFaninEdges_[nFo][nIdx] = Node2Edge(nFi, fCompl ^ fFoCompl);
@@ -1372,20 +1372,20 @@ inline void AndNetwork::RemoveConst(int nId) {
       assert(!IsPo(nFo));
       RemoveFanin(nFo, nIdx);
       if (fPropagating_ && GetNumFanins(nFo) <= 1) {
-        vTrav_[nFo] = nTrav_;
+        vTrav_[nFo] = uTrav_;
       }
     }
   });
   Action action;
   action.type = REMOVE_CONST;
-  action.id = nId;
+  action.nId = nId;
   // substitute with constant
   ForEachFanout<true, true, false>(nId, [&](int nFo, int nIdx, bool fFoCompl) {
     action.vFanouts.push_back(nFo);
     vRefs_[GetConst0()]++;
     vvFaninEdges_[nFo][nIdx] = Node2Edge(GetConst0(), fCompl ^ fFoCompl);
     if (fPropagating_) {
-      vTrav_[nFo] = nTrav_;
+      vTrav_[nFo] = uTrav_;
     }
   });
   vRefs_[nId] = 0;
@@ -1408,10 +1408,10 @@ inline void AndNetwork::AddFanin(int nId, int nFi, bool fCompl) {
   assert(nFi != GetConst0() || !fCompl); // no const-1
   Action action;
   action.type = ADD_FANIN;
-  action.id = nId;
-  action.idx = GetNumFanins(nId);
-  action.fi = nFi;
-  action.c = fCompl;
+  action.nId = nId;
+  action.nIdx = GetNumFanins(nId);
+  action.nFi = nFi;
+  action.fCompl = fCompl;
   auto it = std::find(lInts_.begin(), lInts_.end(), nId);
   assert(it != lInts_.end());
   auto it2 = std::find(it, lInts_.end(), nFi);
@@ -1433,10 +1433,10 @@ inline bool AndNetwork::TrivialCollapse(int nId) {
     if (!IsPi(nFi) && !fCompl && vRefs_[nFi] == 1) {
       Action action;
       action.type = TRIVIAL_COLLAPSE;
-      action.id = nId;
-      action.idx = nIdx;
-      action.fi = nFi;
-      action.c = fCompl;
+      action.nId = nId;
+      action.nIdx = nIdx;
+      action.nFi = nFi;
+      action.fCompl = fCompl;
       bool fConst0 = false;
       auto it = vvFaninEdges_[nId].begin() + nIdx;
       it = vvFaninEdges_[nId].erase(it);
@@ -1498,10 +1498,10 @@ inline int AndNetwork::TrivialDecompose(int nId, int nFanins) {
   assert(GetNumFanins(nId) > nFanins);
   Action action;
   action.type = TRIVIAL_DECOMPOSE;
-  action.id = nId;
-  action.idx = GetNumFanins(nId) - nFanins;
+  action.nId = nId;
+  action.nIdx = GetNumFanins(nId) - nFanins;
   int nNewFi = CreateNode();
-  action.fi = nNewFi;
+  action.nFi = nNewFi;
   for (int i = 0; i < nFanins; i++) {
     int nFaninEdge = vvFaninEdges_[nId].back();
     vvFaninEdges_[nId].pop_back();
@@ -1522,10 +1522,10 @@ inline void AndNetwork::TrivialDecompose(int nId) {
   while (GetNumFanins(nId) > 2) {
     Action action;
     action.type = TRIVIAL_DECOMPOSE;
-    action.id = nId;
-    action.idx = GetNumFanins(nId) - 2;
+    action.nId = nId;
+    action.nIdx = GetNumFanins(nId) - 2;
     int nNewFi = CreateNode();
-    action.fi = nNewFi;
+    action.nFi = nNewFi;
     int nFaninEdge1 = vvFaninEdges_[nId].back();
     vvFaninEdges_[nId].pop_back();
     int nFaninEdge0 = vvFaninEdges_[nId].back();
@@ -1556,7 +1556,7 @@ inline void AndNetwork::SortFanins(int nId, const std::vector<int> &vIndices) {
   }
   Action action;
   action.type = SORT_FANINS;
-  action.id = nId;
+  action.nId = nId;
   action.vIndices = vIndices;
   TakenAction(action);
 }
@@ -1581,7 +1581,7 @@ inline void AndNetwork::SortFanins(int nId, const Func &comp) {
   }
   Action action;
   action.type = SORT_FANINS;
-  action.id = nId;
+  action.nId = nId;
   assert(check_int_size(vFaninEdges));
   for (int nFaninEdge : vvFaninEdges_[nId]) {
     auto it = std::find(vFaninEdges.begin(), vFaninEdges.end(), nFaninEdge);
@@ -1680,20 +1680,20 @@ inline void AndNetwork::Propagate(int nId) {
   if (nId == -1) {
     ForEachInt([&](int nId) {
       if (GetNumFanins(nId) <= 1 || FindFanin(nId, GetConst0()) != -1) {
-        vTrav_[nId] = nTrav_;
+        vTrav_[nId] = uTrav_;
       }
     });
-    while (it != lInts_.end() && vTrav_[*it] != nTrav_) {
+    while (it != lInts_.end() && vTrav_[*it] != uTrav_) {
       ++it;
     }
   } else {
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
     it = std::find(lInts_.begin(), lInts_.end(), nId);
     assert(it != lInts_.end());
   }
   fPropagating_ = true;
   while (it != lInts_.end()) {
-    if (vTrav_[*it] == nTrav_) {
+    if (vTrav_[*it] == uTrav_) {
       if (GetNumFanins(*it) == 1) {
         RemoveBuffer(*it);
       } else {
@@ -1735,7 +1735,7 @@ inline int AndNetwork::Save(int nSlot) {
     assert(nSlot < int_size(vBackups_));
     vBackups_[nSlot].Copy(*this);
   }
-  action.idx = nSlot;
+  action.nIdx = nSlot;
   TakenAction(action);
   return nSlot;
 }
@@ -1745,7 +1745,7 @@ inline void AndNetwork::Load(int nSlot) {
   assert(nSlot < int_size(vBackups_));
   Action action;
   action.type = LOAD;
-  action.idx = nSlot;
+  action.nIdx = nSlot;
   Copy(vBackups_[nSlot]);
   TakenAction(action);
 }
@@ -1754,7 +1754,7 @@ inline void AndNetwork::PopBack() {
   assert(!vBackups_.empty());
   Action action;
   action.type = POP_BACK;
-  action.idx = int_size(vBackups_) - 1;
+  action.nIdx = int_size(vBackups_) - 1;
   vBackups_.pop_back();
   TakenAction(action);
 }
@@ -1814,15 +1814,15 @@ inline unsigned AndNetwork::StartTraversal(int n) {
   fLockTrav_ = true;
   do {
     for (int i = 0; i < n; i++) {
-      nTrav_++;
-      if (nTrav_ == 0) {
+      uTrav_++;
+      if (uTrav_ == 0) {
         vTrav_.clear();
         break;
       }
     }
-  } while (nTrav_ == 0);
+  } while (uTrav_ == 0);
   vTrav_.resize(nNodes_);
-  return nTrav_ - n + 1;
+  return uTrav_ - n + 1;
 }
 
 inline void AndNetwork::EndTraversal() {
@@ -1835,10 +1835,10 @@ inline bool AndNetwork::ForEachTfiRec(int nId, const Func &func) {
   bool fStop = false;
   if constexpr (fGlobalStop) {
     ForEachFanin<false, fPi, false>(nId, [&](int nFi) {
-      if (vTrav_[nFi] == nTrav_) {
+      if (vTrav_[nFi] == uTrav_) {
         return false;
       }
-      vTrav_[nFi] = nTrav_;
+      vTrav_[nFi] = uTrav_;
       if (invoke_and_return_stop(func, nFi)) {
         fStop = true;
         return true;
@@ -1848,10 +1848,10 @@ inline bool AndNetwork::ForEachTfiRec(int nId, const Func &func) {
     });
   } else {
     ForEachFanin<false, fPi, false>(nId, [&](int nFi) {
-      if (vTrav_[nFi] == nTrav_) {
+      if (vTrav_[nFi] == uTrav_) {
         return;
       }
-      vTrav_[nFi] = nTrav_;
+      vTrav_[nFi] = uTrav_;
       if (invoke_and_return_stop(func, nFi)) {
         return;
       }
@@ -1862,12 +1862,12 @@ inline bool AndNetwork::ForEachTfiRec(int nId, const Func &func) {
 }
 
 template <bool fPi, bool fGlobalStop, bool fReverse, typename It, typename Func>
-inline void AndNetwork::ForEachTfiTopoInt(It it, unsigned nSkip,
+inline void AndNetwork::ForEachTfiTopoInt(It it, unsigned uSkip,
                                           const Func &func) {
   std::vector<int> vTfi;
   bool fStop = false;
   for (; it != lInts_.rend(); ++it) {
-    if (vTrav_[*it] != nTrav_) {
+    if (vTrav_[*it] != uTrav_) {
       continue;
     }
     if constexpr (fReverse) {
@@ -1882,15 +1882,15 @@ inline void AndNetwork::ForEachTfiTopoInt(It it, unsigned nSkip,
       }
     }
     ForEachFanin<false, fPi, false>(*it, [&](int nFi) {
-      if (vTrav_[nFi] != nSkip) {
-        vTrav_[nFi] = nTrav_;
+      if (vTrav_[nFi] != uSkip) {
+        vTrav_[nFi] = uTrav_;
       }
     });
   }
   if constexpr (fPi) {
     if (!fStop) {
       for (int nPi : vPis_) {
-        if (vTrav_[nPi] == nTrav_) {
+        if (vTrav_[nPi] == uTrav_) {
           if constexpr (fReverse) {
             vTfi.push_back(nPi);
           } else {
@@ -1912,23 +1912,23 @@ inline void AndNetwork::ForEachTfiTopoInt(It it, unsigned nSkip,
 }
 
 template <bool fPo, bool fGlobalStop, bool fReverse, typename It, typename Func>
-inline void AndNetwork::ForEachTfoInt(It it, unsigned nSkip, const Func &func) {
+inline void AndNetwork::ForEachTfoInt(It it, unsigned uSkip, const Func &func) {
   std::vector<int> vTfo;
   bool fStop = false;
   for (; it != lInts_.end(); ++it) {
-    if (vTrav_[*it] == nSkip) {
+    if (vTrav_[*it] == uSkip) {
       continue;
     }
-    if (vTrav_[*it] != nTrav_) {
+    if (vTrav_[*it] != uTrav_) {
       ForEachFanin(*it, [&](int nFi) {
-        if (vTrav_[nFi] == nTrav_) {
-          vTrav_[*it] = nTrav_;
+        if (vTrav_[nFi] == uTrav_) {
+          vTrav_[*it] = uTrav_;
           return true;
         }
         return false;
       });
     }
-    if (vTrav_[*it] == nTrav_) {
+    if (vTrav_[*it] == uTrav_) {
       if constexpr (fReverse) {
         vTfo.push_back(*it);
       } else {
@@ -1946,8 +1946,8 @@ inline void AndNetwork::ForEachTfoInt(It it, unsigned nSkip, const Func &func) {
   if constexpr (fPo) {
     if (!fStop) {
       for (int nPo : vPos_) {
-        if (vTrav_[nPo] != nSkip) {
-          if (vTrav_[GetFanin(nPo, 0)] == nTrav_) {
+        if (vTrav_[nPo] != uSkip) {
+          if (vTrav_[GetFanin(nPo, 0)] == uTrav_) {
             if constexpr (fReverse) {
               vTfo.push_back(nPo);
             } else {

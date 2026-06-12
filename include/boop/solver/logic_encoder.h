@@ -93,11 +93,11 @@ void LogicEncoder<Solver>::OrN(std::vector<int> vLits, int nOut) {
 
 template <class Solver> int LogicEncoder<Solver>::And2(int nIn1, int nIn2) {
   int nOut;
-  if (nIn1 == solver_.zero || nIn2 == solver_.zero) {
-    nOut = solver_.zero;
-  } else if (nIn1 == solver_.one) {
+  if (nIn1 == solver_.nZero || nIn2 == solver_.nZero) {
+    nOut = solver_.nZero;
+  } else if (nIn1 == solver_.nOne) {
     nOut = nIn2;
-  } else if (nIn2 == solver_.one) {
+  } else if (nIn2 == solver_.nOne) {
     nOut = nIn1;
   } else {
     nOut = solver_.NewVar();
@@ -114,13 +114,13 @@ template <class Solver> int LogicEncoder<Solver>::Or2(int nIn1, int nIn2) {
 
 template <class Solver> int LogicEncoder<Solver>::Xor2(int nIn1, int nIn2) {
   int nOut;
-  if (nIn1 == solver_.zero) {
+  if (nIn1 == solver_.nZero) {
     nOut = nIn2;
-  } else if (nIn1 == solver_.one) {
+  } else if (nIn1 == solver_.nOne) {
     nOut = Compl(nIn2);
-  } else if (nIn2 == solver_.zero) {
+  } else if (nIn2 == solver_.nZero) {
     nOut = nIn1;
-  } else if (nIn2 == solver_.one) {
+  } else if (nIn2 == solver_.nOne) {
     nOut = Compl(nIn1);
   } else {
     nOut = solver_.NewVar();
@@ -134,16 +134,16 @@ int LogicEncoder<Solver>::AndN(const std::vector<int> &vLits) {
   std::vector<int> vLits2;
   vLits2.reserve(vLits.size());
   for (int nLit : vLits) {
-    if (nLit == solver_.one) {
+    if (nLit == solver_.nOne) {
       continue;
     }
-    if (nLit == solver_.zero) {
-      return solver_.zero;
+    if (nLit == solver_.nZero) {
+      return solver_.nZero;
     }
     vLits2.push_back(nLit);
   }
   if (vLits2.empty()) {
-    return solver_.one;
+    return solver_.nOne;
   }
   int nOut = solver_.NewVar();
   AndN(vLits2, nOut);
@@ -155,16 +155,16 @@ int LogicEncoder<Solver>::OrN(std::vector<int> const &vLits) {
   std::vector<int> vLits2;
   vLits2.reserve(vLits.size());
   for (int nLit : vLits) {
-    if (nLit == solver_.one) {
-      return solver_.one;
+    if (nLit == solver_.nOne) {
+      return solver_.nOne;
     }
-    if (nLit == solver_.zero) {
+    if (nLit == solver_.nZero) {
       continue;
     }
     vLits2.push_back(nLit);
   }
   if (vLits2.empty()) {
-    return solver_.zero;
+    return solver_.nZero;
   }
   int nOut = solver_.NewVar();
   OrN(vLits2, nOut);

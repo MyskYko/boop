@@ -32,22 +32,22 @@ inline void StopAbc() { Abc_Stop(); }
 
 inline void ExecuteCommand(Abc_Frame_t *pAbc, const std::string &strCommand) {
   if (Abc_FrameIsBatchMode()) {
-    int r = Cmd_CommandExecute(pAbc, strCommand.c_str());
-    assert(r == 0);
+    int nStatus = Cmd_CommandExecute(pAbc, strCommand.c_str());
+    assert(nStatus == 0);
   } else {
     Abc_FrameSetBatchMode(1);
-    int r = Cmd_CommandExecute(pAbc, strCommand.c_str());
-    assert(r == 0);
+    int nStatus = Cmd_CommandExecute(pAbc, strCommand.c_str());
+    assert(nStatus == 0);
     Abc_FrameSetBatchMode(0);
   }
 }
 
 template <typename Ntk> void GiaReader(Gia_Man_t *pGia, Ntk *pNtk) {
-  int i;
+  int nObjId;
   Gia_Obj_t *pObj;
   pNtk->Reserve(Gia_ManObjNum(pGia));
   Gia_ManConst0(pGia)->Value = pNtk->GetConst0();
-  Gia_ManForEachObj1(pGia, pObj, i) {
+  Gia_ManForEachObj1(pGia, pObj, nObjId) {
     if (Gia_ObjIsCi(pObj)) {
       pObj->Value = pNtk->AddPi();
     } else if (Gia_ObjIsCo(pObj)) {
@@ -123,10 +123,10 @@ inline void AbcLmsStart(const std::string &strLibName) {
 template <typename Ntk> bool AbcVerify(Ntk *pNtk, Ntk *pAnother) {
   Gia_Man_t *pGia = CreateGia(pNtk);
   Gia_Man_t *pNew = CreateGia(pAnother);
-  bool r = Cec_ManVerifyTwo(pGia, pNew, 0);
+  bool fVerified = Cec_ManVerifyTwo(pGia, pNew, 0);
   Gia_ManStop(pGia);
   Gia_ManStop(pNew);
-  return r;
+  return fVerified;
 }
 
 } // namespace abc_interface

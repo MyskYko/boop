@@ -114,7 +114,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
   vLits2.reserve(vLits.size());
   bool fOne = false;
   for (int nLit : vLits) {
-    if (nLit == solver_.one) {
+    if (nLit == solver_.nOne) {
       if (fOne) {
         solver_.internal_.AddClause({});
         return;
@@ -122,7 +122,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
       fOne = true;
       continue;
     }
-    if (nLit == solver_.zero) {
+    if (nLit == solver_.nZero) {
       continue;
     }
     vLits2.push_back(nLit);
@@ -156,7 +156,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
   std::vector<int> vLits2;
   vLits2.reserve(vLits.size());
   for (int nLit : vLits) {
-    if (nLit == solver_.one) {
+    if (nLit == solver_.nOne) {
       if (!k) {
         solver_.internal_.AddClause({});
         return;
@@ -164,7 +164,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
       k--;
       continue;
     }
-    if (nLit == solver_.zero) {
+    if (nLit == solver_.nZero) {
       continue;
     }
     vLits2.push_back(nLit);
@@ -237,8 +237,8 @@ template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize,
 void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::
     CheckNoConstants(const std::vector<int> &vLits) {
   for (int nLit : vLits) {
-    assert(nLit != solver_.zero);
-    assert(nLit != solver_.one);
+    assert(nLit != solver_.nZero);
+    assert(nLit != solver_.nOne);
   }
 }
 
@@ -247,7 +247,7 @@ template <class Solver, bool kDirect, AmoMethod kAmoMethod, int kBimSize,
 void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
                         kAmkMethod>::Comparator(int nIn1, int nIn2, int &nOut1,
                                                 int &nOut2) {
-  // nIn1 and nIn2 may be solver_.zero
+  // nIn1 and nIn2 may be solver_.nZero
   nOut1 = solver_.logic.Or2(nIn1, nIn2);
   nOut2 = solver_.logic.And2(nIn1, nIn2);
 }
@@ -394,7 +394,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
                                            std::vector<int> &vRes) {
   vRes.clear();
   const int n = pow2_ceil(int_size(vLits));
-  vLits.resize(n, solver_.zero);
+  vLits.resize(n, solver_.nZero);
   PwSort(vLits, vRes);
 }
 
@@ -510,7 +510,7 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize, kAmkMethod>::
     vRes.push_back(solver_.NewVar());
   }
   for (int j = 1; j <= k; j++) {
-    std::vector<int> vArgs(j, solver_.zero);
+    std::vector<int> vArgs(j, solver_.nZero);
     vArgs.push_back(vRes[j - 1]);
     DirectCardClauses(vLits, 0, 0, j, vArgs);
   }
@@ -787,17 +787,17 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
   std::vector<int> v1Int = v1, v2Int = v2;
   int h = pow2_ceil(n1);
   for (; n2 < k / 2; n2++) {
-    v2Int.push_back(solver_.zero);
+    v2Int.push_back(solver_.nZero);
   }
   while (h > 1) {
     h = h / 2;
     for (int j = 0; j < n2; j++) {
       if (j + h < n1) {
         int nOut1, nOut2;
-        if (v1Int[j + h] == solver_.zero) {
+        if (v1Int[j + h] == solver_.nZero) {
           nOut1 = v1Int[j + h];
           nOut2 = v2Int[j];
-        } else if (v2Int[j] == solver_.zero) {
+        } else if (v2Int[j] == solver_.nZero) {
           nOut2 = v1Int[j + h];
           nOut1 = v2Int[j];
         } else {
@@ -817,10 +817,10 @@ void CardinalityEncoder<Solver, kDirect, kAmoMethod, kBimSize,
     } else {
       vRes.push_back(v2Int[j / 2]);
     }
-    assert(vRes[j] != solver_.zero);
+    assert(vRes[j] != solver_.nZero);
   }
   for (int j = (k + 1) / 2; j < n1; j++) {
-    if (v1Int[j] != solver_.zero) {
+    if (v1Int[j] != solver_.nZero) {
       solver_.internal_.AddClause({Compl(v1Int[j])});
     }
   }

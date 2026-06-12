@@ -34,8 +34,8 @@ template <typename Internal, template <typename> class Logic,
           template <typename> class Cardi>
 class Solver {
 public:
-  static constexpr int zero = 0x7fffffff;
-  static constexpr int one = -zero;
+  static constexpr int nZero = 0x7fffffff;
+  static constexpr int nOne = -nZero;
 
   using This = Solver<Internal, Logic, Cardi>;
   friend class Logic<This>;
@@ -161,10 +161,10 @@ void Solver<Internal, Logic, Cardi>::AddClause(It it, It itEnd, int n) {
   std::vector<int> vLits;
   vLits.reserve(n);
   for (; it != itEnd; ++it) {
-    if (*it == one) {
+    if (*it == nOne) {
       return;
     }
-    if (*it == zero) {
+    if (*it == nZero) {
       continue;
     }
     vLits.push_back(*it);
@@ -202,13 +202,13 @@ Solver<Internal, Logic, Cardi>::Solve(const std::vector<int> *vAssumptions,
   std::vector<int> vAssumptions2;
   vAssumptions2.reserve(vAssumptions->size());
   for (int nLit : *vAssumptions) {
-    if (nLit == zero) {
+    if (nLit == nZero) {
       if (sCore != nullptr) {
         sCore->insert(nLit);
       }
       return Status::UNSAT;
     }
-    if (nLit != one) {
+    if (nLit != nOne) {
       vAssumptions2.push_back(nLit);
     }
   }
@@ -220,10 +220,10 @@ Solver<Internal, Logic, Cardi>::Solve(const std::vector<int> *vAssumptions,
 template <typename Internal, template <typename> class Logic,
           template <typename> class Cardi>
 bool Solver<Internal, Logic, Cardi>::Value(int nLit) {
-  if (nLit == zero) {
+  if (nLit == nZero) {
     return false;
   }
-  if (nLit == one) {
+  if (nLit == nOne) {
     return true;
   }
   return internal_.Value(nLit);

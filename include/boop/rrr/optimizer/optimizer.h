@@ -306,9 +306,9 @@ void Optimizer<Ntk, Ana>::Run(int nSeed, Seconds nTimeout) {
             return true;
           }},
           {"multi"}, false, false);
-      Cost newCost = fnObjective_(pNtk_);
-      if (newCost < cost) {
-        cost = newCost;
+      Cost costNew = fnObjective_(pNtk_);
+      if (costNew < cost) {
+        cost = costNew;
       } else {
         break;
       }
@@ -450,7 +450,7 @@ void Optimizer<Ntk, Ana>::ActionCallback(const Action &action) {
   }
   switch (action.type) {
   case REMOVE_FANIN:
-    if (action.id != nTarget_) {
+    if (action.nId != nTarget_) {
       nTarget_ = -1;
     }
     break;
@@ -458,12 +458,12 @@ void Optimizer<Ntk, Ana>::ActionCallback(const Action &action) {
     break;
   case REMOVE_BUFFER:
   case REMOVE_CONST:
-    if (action.id == nTarget_) {
+    if (action.nId == nTarget_) {
       nTarget_ = -1;
     }
     break;
   case ADD_FANIN:
-    if (action.id != nTarget_) {
+    if (action.nId != nTarget_) {
       nTarget_ = -1;
     }
     break;
@@ -891,18 +891,18 @@ bool Optimizer<Ntk, Ana>::RemoveRedundancy(bool fRandom) {
 // reduce
 
 template <typename Ntk, typename Ana> bool Optimizer<Ntk, Ana>::Reduce() {
-  bool r;
+  bool fReduced;
   switch (par_.nReductionMethod) {
   case 0:
-    r = RemoveRedundancy(false);
+    fReduced = RemoveRedundancy(false);
     break;
   case 1:
-    r = RemoveRedundancy(true);
+    fReduced = RemoveRedundancy(true);
     break;
   default:
     assert(0);
   }
-  return r;
+  return fReduced;
 }
 
 // addition

@@ -1,19 +1,19 @@
 #include "boop/api/helo.h"
 
 int main(int argc, char **argv) {
-  char input_path[4096];
-  char output_path[4096];
+  char pInputPath[4096];
+  char pOutputPath[4096];
   BoopHeloParams params;
   boop_helo_params_default(&params);
-  int status =
-      boop_helo_params_parse_argv(&params, input_path, sizeof(input_path),
-                                  output_path, sizeof(output_path), argc, argv);
-  if (status != 0) {
-    return status;
+  int nStatus =
+      boop_helo_params_parse_argv(&params, pInputPath, sizeof(pInputPath),
+                                  pOutputPath, sizeof(pOutputPath), argc, argv);
+  if (nStatus != 0) {
+    return nStatus;
   }
-  if (input_path[0] == '\0' || output_path[0] == '\0') {
+  if (pInputPath[0] == '\0' || pOutputPath[0] == '\0') {
     boop_helo_print_help();
     return 1;
   }
-  return boop_helo_optimize_file(input_path, output_path, &params);
+  return boop_helo_optimize_file(pInputPath, pOutputPath, &params);
 }

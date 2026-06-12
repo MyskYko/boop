@@ -5,15 +5,15 @@
 
 BOOP_C_HEADER_START
 
-void boop_helo_params_default(BoopHeloParams *params);
+void boop_helo_params_default(BoopHeloParams *pParams);
 #ifdef BOOP_USE_ARGPARSE
-int boop_helo_params_parse_argv(BoopHeloParams *params, char *input_path,
-                                int input_path_size, char *output_path,
-                                int output_path_size, int argc,
+int boop_helo_params_parse_argv(BoopHeloParams *pParams, char *pInputPath,
+                                int nInputPathSize, char *pOutputPath,
+                                int nOutputPathSize, int argc,
                                 const char *const argv[]);
 void boop_helo_print_help(void);
 #endif
-int boop_helo_optimize_file(const char *input_path, const char *output_path,
-                            const BoopHeloParams *params);
+int boop_helo_optimize_file(const char *pInputPath, const char *pOutputPath,
+                            const BoopHeloParams *pParams);
 
 BOOP_C_HEADER_END

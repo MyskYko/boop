@@ -9,15 +9,15 @@ BOOP_HEADER_START
 
 namespace boop {
 
-inline bool copy_string(char *dst, int dst_size, std::string_view src) {
-  if (dst == nullptr) {
+inline bool copy_string(char *pDst, int nDstSize, std::string_view strSrc) {
+  if (pDst == nullptr) {
     return true;
   }
-  if (dst_size <= 0 || src.size() + 1 > static_cast<std::size_t>(dst_size)) {
+  if (nDstSize <= 0 || strSrc.size() + 1 > static_cast<std::size_t>(nDstSize)) {
     return false;
   }
-  std::memcpy(dst, src.data(), src.size());
-  dst[src.size()] = '\0';
+  std::memcpy(pDst, strSrc.data(), strSrc.size());
+  pDst[strSrc.size()] = '\0';
   return true;
 }
 

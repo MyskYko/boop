@@ -34,10 +34,10 @@ enum ActionType {
 
 struct Action {
   ActionType type = NONE;
-  int id = -1;
-  int idx = -1;
-  int fi = -1;
-  bool c = false;
+  int nId = -1;
+  int nIdx = -1;
+  int nFi = -1;
+  bool fCompl = false;
   std::vector<int> vFanins;
   std::vector<int> vIndices;
   std::vector<int> vFanouts;
@@ -80,20 +80,20 @@ static inline char const *GetActionTypeCstr(Action const &action) {
 static inline std::stringstream GetActionDescription(Action const &action) {
   std::stringstream ss;
   ss << GetActionTypeCstr(action);
-  std::string delim = " : ";
-  if (action.id != -1) {
-    ss << delim;
-    print_next(ss, "node", action.id);
-    delim = " , ";
+  std::string strDelim = " : ";
+  if (action.nId != -1) {
+    ss << strDelim;
+    print_next(ss, "node", action.nId);
+    strDelim = " , ";
   }
-  if (action.fi != -1) {
-    ss << delim;
-    print_next(ss, "fanin", static_cast<bool>(action.c), action.fi);
-    delim = " , ";
+  if (action.nFi != -1) {
+    ss << strDelim;
+    print_next(ss, "fanin", static_cast<bool>(action.fCompl), action.nFi);
+    strDelim = " , ";
   }
-  if (action.idx != -1) {
-    ss << delim;
-    print_next(ss, "index", action.idx);
+  if (action.nIdx != -1) {
+    ss << strDelim;
+    print_next(ss, "index", action.nIdx);
   }
   ss << std::endl;
   if (!action.vFanins.empty()) {

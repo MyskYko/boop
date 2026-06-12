@@ -55,12 +55,10 @@ private:
   // aliases
   using Word = unsigned long long;
   static constexpr int WordWidth = CHAR_BIT * sizeof(Word);
-  using itr = std::vector<Word>::iterator;
-  using citr = std::vector<Word>::const_iterator;
-  static constexpr Word one = 0xffffffffffffffffull;
-  static constexpr Word vars[] = {0xaaaaaaaaaaaaaaaaull, 0xccccccccccccccccull,
-                                  0xf0f0f0f0f0f0f0f0ull, 0xff00ff00ff00ff00ull,
-                                  0xffff0000ffff0000ull, 0xffffffff00000000ull};
+  static constexpr Word wOne = 0xffffffffffffffffull;
+  static constexpr Word pVars[] = {
+      0xaaaaaaaaaaaaaaaaull, 0xccccccccccccccccull, 0xf0f0f0f0f0f0f0f0ull,
+      0xff00ff00ff00ff00ull, 0xffff0000ffff0000ull, 0xffffffff00000000ull};
 
   Ntk *pNtk_;
   const Parameter par_;
@@ -75,7 +73,7 @@ private:
   std::vector<Word> vCare_;
   std::vector<Word> vTmp_;
 
-  unsigned nTrav_;
+  unsigned uTrav_;
   std::vector<unsigned> vTrav_;
 
   int nPivot_;
@@ -136,7 +134,7 @@ private:
 template <typename Ntk>
 Simulator<Ntk>::Simulator()
     : pNtk_(nullptr), par_({0, 0, false, true}), nWords_(0), fGenerated_(false),
-      fInitialized_(false), fExhaustive_(false), nTarget_(-1), nTrav_(0),
+      fInitialized_(false), fExhaustive_(false), nTarget_(-1), uTrav_(0),
       nPivot_(0), fUpdate_(false) {
   ResetSummary();
 }
@@ -144,7 +142,7 @@ Simulator<Ntk>::Simulator()
 template <typename Ntk>
 Simulator<Ntk>::Simulator(const Parameter &par)
     : pNtk_(nullptr), par_(par), nWords_(par.nWords), fGenerated_(false),
-      fInitialized_(false), fExhaustive_(false), nTarget_(-1), nTrav_(0),
+      fInitialized_(false), fExhaustive_(false), nTarget_(-1), uTrav_(0),
       nPivot_(0), fUpdate_(false) {
   ResetSummary();
 }
@@ -234,8 +232,8 @@ template <typename Ntk>
 void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
   if (par_.nVerbose) {
     std::stringstream ss;
-    for (VarValue c : vCex) {
-      ss << GetVarValueChar(c);
+    for (VarValue value : vCex) {
+      ss << GetVarValueChar(value);
     }
     Print(0, "cex:", ss.str());
   }
@@ -289,9 +287,9 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
       vPackedCountEvicted_.push_back(vPackedCount_[nWord * WordWidth + nBit]);
     }
     vPackedCount_[nWord * WordWidth + nBit] = 1;
-    Word mask = Word{1} << nBit;
+    Word wMask = Word{1} << nBit;
     for (int nIdx = 0; nIdx < pNtk_->GetNumPis(); nIdx++) {
-      vAssignedStimuli_[nIdx * nWords_ + nWord] &= ~mask;
+      vAssignedStimuli_[nIdx * nWords_ + nWord] &= ~wMask;
     }
     nPivot_++;
     if (nPivot_ == WordWidth * nWords_) {
@@ -301,14 +299,14 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
   // update stimulus
   for (int nIdx : vCarePiIdxs) {
     int nId = pNtk_->GetPi(nIdx);
-    Word mask = Word{1} << nBit;
+    Word wMask = Word{1} << nBit;
     if (vCex[nIdx] == rrrTRUE) {
-      vValues_[nId * nWords_ + nWord] |= mask;
+      vValues_[nId * nWords_ + nWord] |= wMask;
     } else {
       assert(vCex[nIdx] == rrrFALSE);
-      vValues_[nId * nWords_ + nWord] &= ~mask;
+      vValues_[nId * nWords_ + nWord] &= ~wMask;
     }
-    vAssignedStimuli_[nIdx * nWords_ + nWord] |= mask;
+    vAssignedStimuli_[nIdx * nWords_ + nWord] |= wMask;
     Print(1, "node", nId);
     PrintBits(2, 1, vValues_.begin() + nId * nWords_ + nWord);
     Print(1, "asgn", nId);
@@ -324,7 +322,7 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
     StartTraversal();
     vec_ops::Copy(1, vValuesInv_.begin() + nTarget_ * nWords_ + nWord,
                   vValues_.begin() + nTarget_ * nWords_ + nWord, true);
-    vTrav_[nTarget_] = nTrav_;
+    vTrav_[nTarget_] = uTrav_;
     pNtk_->template ForEachTfo<false, true, true, false>(
         nTarget_, [&](int nId) {
           auto itX = vValuesInv_.end();
@@ -334,14 +332,14 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
           case AND:
             pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
               if (itX == vValuesInv_.end()) {
-                if (vTrav_[nFi] != nTrav_) {
+                if (vTrav_[nFi] != uTrav_) {
                   itX = vValues_.begin() + nFi * nWords_ + nWord;
                 } else {
                   itX = vValuesInv_.begin() + nFi * nWords_ + nWord;
                 }
                 fComplX = fCompl;
               } else {
-                if (vTrav_[nFi] != nTrav_) {
+                if (vTrav_[nFi] != uTrav_) {
                   vec_ops::And(1, itY, itX,
                                vValues_.begin() + nFi * nWords_ + nWord,
                                fComplX, fCompl);
@@ -363,14 +361,14 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
           default:
             assert(0);
           }
-          vTrav_[nId] = nTrav_;
+          vTrav_[nId] = uTrav_;
           Print(1, "node", nId);
           PrintBits(2, 1, vValuesInv_.begin() + nId * nWords_ + nWord);
         });
     vec_ops::Clear(1, vCare_.begin() + nWord);
     pNtk_->ForEachPoDriver([&](int nFi) {
       assert(nFi != nTarget_);
-      if (vTrav_[nFi] == nTrav_) { // skip unaffected POs
+      if (vTrav_[nFi] == uTrav_) { // skip unaffected POs
         vCare_[nWord] |= (vValues_[nFi * nWords_ + nWord] ^
                           vValuesInv_[nFi * nWords_ + nWord]);
       }
@@ -443,9 +441,9 @@ void Simulator<Ntk>::PrintBits(int nVerboseLevel, int nWords,
                                std::vector<Word>::const_iterator it) {
   if (par_.nVerbose > nVerboseLevel) {
     std::stringstream ss = vec_ops::GetStringStream(nWords, it);
-    std::string line;
-    while (std::getline(ss, line)) {
-      Print(nVerboseLevel, line);
+    std::string strLine;
+    while (std::getline(ss, strLine)) {
+      Print(nVerboseLevel, strLine);
     }
   }
 }
@@ -457,10 +455,10 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
   switch (action.type) {
   case REMOVE_FANIN:
     assert(fInitialized_);
-    if (action.id == nTarget_) {
+    if (action.nId == nTarget_) {
       fUpdate_ = true;
     } else {
-      sUpdates_.insert(action.id);
+      sUpdates_.insert(action.nId);
     }
     break;
   case REMOVE_UNUSED:
@@ -468,7 +466,7 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
   case REMOVE_BUFFER:
   case REMOVE_CONST:
     if (fInitialized_) {
-      if (action.id == nTarget_) {
+      if (action.nId == nTarget_) {
         if (fUpdate_) {
           for (int nFo : action.vFanouts) {
             sUpdates_.insert(nFo);
@@ -477,8 +475,8 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
         }
         nTarget_ = -1;
       } else {
-        if (sUpdates_.count(action.id)) {
-          sUpdates_.erase(action.id);
+        if (sUpdates_.count(action.nId)) {
+          sUpdates_.erase(action.nId);
           for (int nFo : action.vFanouts) {
             sUpdates_.insert(nFo);
           }
@@ -488,10 +486,10 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
     break;
   case ADD_FANIN:
     assert(fInitialized_);
-    if (action.id == nTarget_) {
+    if (action.nId == nTarget_) {
       fUpdate_ = true;
     } else {
-      sUpdates_.insert(action.id);
+      sUpdates_.insert(action.nId);
     }
     break;
   case TRIVIAL_COLLAPSE:
@@ -499,7 +497,7 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
   case TRIVIAL_DECOMPOSE:
     if (fInitialized_) {
       vValues_.resize(nWords_ * pNtk_->GetNumNodes());
-      SimulateNode(vValues_, action.fi);
+      SimulateNode(vValues_, action.nFi);
       // time of this simulation is not measured for simplicity
     }
     break;
@@ -510,12 +508,12 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
     break;
   case SAVE:
     if (par_.fSave) {
-      Save(action.idx);
+      Save(action.nIdx);
     }
     break;
   case LOAD:
     if (par_.fSave) {
-      Load(action.idx);
+      Load(action.nIdx);
     } else {
       fInitialized_ = false;
     }
@@ -535,15 +533,15 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
 template <typename Ntk> unsigned Simulator<Ntk>::StartTraversal(int n) {
   do {
     for (int i = 0; i < n; i++) {
-      nTrav_++;
-      if (nTrav_ == 0) {
+      uTrav_++;
+      if (uTrav_ == 0) {
         vTrav_.clear();
         break;
       }
     }
-  } while (nTrav_ == 0);
+  } while (uTrav_ == 0);
   vTrav_.resize(pNtk_->GetNumNodes());
-  return nTrav_ - n + 1;
+  return uTrav_ - n + 1;
 }
 
 // simulation
@@ -712,7 +710,7 @@ template <typename Ntk> void Simulator<Ntk>::GenerateExhaustiveStimuli() {
     auto it = vValues_.begin() + nId * nWords_;
     if (nIdx < 6) {
       for (int i = 0; i < nWords_; i++, ++it) {
-        *it = vars[nIdx];
+        *it = pVars[nIdx];
       }
     } else {
       const int nBlock = 1 << (nIdx - 6);
@@ -721,7 +719,7 @@ template <typename Ntk> void Simulator<Ntk>::GenerateExhaustiveStimuli() {
           *it = 0;
         }
         for (int j = 0; j < nBlock; i++, j++, ++it) {
-          *it = one;
+          *it = wOne;
         }
       }
     }
@@ -760,7 +758,7 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
   StartTraversal();
   vec_ops::Copy(nWords_, vValuesInv_.begin() + nTarget_ * nWords_,
                 vValues_.begin() + nTarget_ * nWords_, true);
-  vTrav_[nTarget_] = nTrav_;
+  vTrav_[nTarget_] = uTrav_;
   pNtk_->template ForEachTfo<false, true, true, false>(nTarget_, [&](int nId) {
     auto itX = vValuesInv_.end();
     auto itY = vValuesInv_.begin() + nId * nWords_;
@@ -769,14 +767,14 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
     case AND:
       pNtk_->ForEachFanin(nId, [&](int nFi, bool fCompl) {
         if (itX == vValuesInv_.end()) {
-          if (vTrav_[nFi] != nTrav_) {
+          if (vTrav_[nFi] != uTrav_) {
             itX = vValues_.begin() + nFi * nWords_;
           } else {
             itX = vValuesInv_.begin() + nFi * nWords_;
           }
           fComplX = fCompl;
         } else {
-          if (vTrav_[nFi] != nTrav_) {
+          if (vTrav_[nFi] != uTrav_) {
             vec_ops::And(nWords_, itY, itX, vValues_.begin() + nFi * nWords_,
                          fComplX, fCompl);
           } else {
@@ -796,7 +794,7 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
     default:
       assert(0);
     }
-    vTrav_[nId] = nTrav_;
+    vTrav_[nId] = uTrav_;
     Print(1, "node", nId);
     PrintBits(2, nWords_, vValuesInv_.begin() + nId * nWords_);
   });
@@ -804,7 +802,7 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
   vec_ops::Clear(nWords_, vCare_.begin());
   pNtk_->ForEachPoDriver([&](int nFi) {
     assert(nFi != nTarget_);
-    if (vTrav_[nFi] == nTrav_) { // skip unaffected POs
+    if (vTrav_[nFi] == uTrav_) { // skip unaffected POs
       for (int i = 0; i < nWords_; i++) {
         vCare_[i] |=
             (vValues_[nFi * nWords_ + i] ^ vValuesInv_[nFi * nWords_ + i]);

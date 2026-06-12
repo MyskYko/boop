@@ -18,13 +18,13 @@ constexpr int clog2(int n) {
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
   return std::bit_width(n - 1);
 #else
-  int r = 0;
+  int nResult = 0;
   --n;
   while (n > 0) {
     n >>= 1;
-    ++r;
+    ++nResult;
   }
-  return r;
+  return nResult;
 #endif
 }
 
@@ -34,15 +34,15 @@ constexpr int pow2_ceil(int n) {
     return 0;
   }
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
-  unsigned r = std::bit_ceil(static_cast<unsigned>(n));
+  unsigned uResult = std::bit_ceil(static_cast<unsigned>(n));
 #else
-  unsigned r = 1;
-  while (r < static_cast<unsigned>(n)) {
-    r <<= 1;
+  unsigned uResult = 1;
+  while (uResult < static_cast<unsigned>(n)) {
+    uResult <<= 1;
   }
 #endif
-  assert(r <= static_cast<unsigned>(std::numeric_limits<int>::max()));
-  return static_cast<int>(r);
+  assert(uResult <= static_cast<unsigned>(std::numeric_limits<int>::max()));
+  return static_cast<int>(uResult);
 }
 
 } // namespace boop

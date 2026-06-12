@@ -147,10 +147,10 @@ template <typename It> inline std::stringstream GetStringStream(int n, It it) {
   constexpr std::size_t nBits =
       sizeof(typename std::iterator_traits<It>::value_type) * CHAR_BIT;
   std::stringstream ss;
-  std::string delim;
+  std::string strDelim;
   for (int i = 0; i < n; i++, ++it) {
-    ss << delim << std::bitset<nBits>(*it);
-    delim = "\n";
+    ss << strDelim << std::bitset<nBits>(*it);
+    strDelim = "\n";
   }
   return ss;
 }

@@ -24,11 +24,11 @@ static inline void print_warning(std::string const &message) {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &os, std::vector<T> const &v) {
-  std::string delim;
+  std::string strDelim;
   os << "[";
   for (T const &e : v) {
-    os << delim << e;
-    delim = ", ";
+    os << strDelim << e;
+    strDelim = ", ";
   }
   os << "]";
   return os;
@@ -36,11 +36,11 @@ std::ostream &operator<<(std::ostream &os, std::vector<T> const &v) {
 
 template <typename T>
 std::ostream &operator<<(std::ostream &os, std::set<T> const &s) {
-  std::string delim;
+  std::string strDelim;
   os << "{";
   for (T const &e : s) {
-    os << delim << e;
-    delim = ", ";
+    os << strDelim << e;
+    strDelim = ", ";
   }
   os << "}";
   return os;
@@ -51,11 +51,11 @@ std::ostream &operator<<(std::ostream &os, std::set<T> const &s) {
 static inline void print_complemented_edges(
     std::function<void(std::function<void(int, bool)> const &)> const
         &forEachEdge) {
-  std::string delim;
+  std::string strDelim;
   std::cout << "[";
-  forEachEdge([&](int id, bool c) {
-    std::cout << delim << (c ? "!" : "") << id;
-    delim = ", ";
+  forEachEdge([&](int nId, bool fCompl) {
+    std::cout << strDelim << (fCompl ? "!" : "") << nId;
+    strDelim = ", ";
   });
   std::cout << "]";
 }
@@ -63,19 +63,19 @@ static inline void print_complemented_edges(
 // print next
 
 struct SW {
-  int width = 0;
-  bool left = false;
+  int nWidth = 0;
+  bool fLeft = false;
 };
 
 struct NS {}; // no space
 
 struct PrintFormat {
-  static constexpr int int_width = 4;
-  static constexpr bool double_scientific = true;
-  static constexpr int double_scientific_precision =
+  static constexpr int nIntWidth = 4;
+  static constexpr bool fDoubleScientific = true;
+  static constexpr int nDoubleScientificPrecision =
       std::numeric_limits<double>::max_digits10;
-  static constexpr int double_fixed_width = 8;
-  static constexpr int double_fixed_precision = 2;
+  static constexpr int nDoubleFixedWidth = 8;
+  static constexpr int nDoubleFixedPrecision = 2;
 };
 
 template <typename T> void print_next(std::ostream &os, T t);
@@ -83,12 +83,12 @@ template <typename T, typename... Args>
 void print_next(std::ostream &os, T t, Args... args);
 
 static inline void print_next(std::ostream &os, int t) {
-  os << std::setw(PrintFormat::int_width) << t;
+  os << std::setw(PrintFormat::nIntWidth) << t;
 }
 
 template <typename... Args>
 static inline void print_next(std::ostream &os, int t, Args... args) {
-  os << std::setw(PrintFormat::int_width) << t << " ";
+  os << std::setw(PrintFormat::nIntWidth) << t << " ";
   print_next(os, args...);
 }
 
@@ -105,46 +105,46 @@ static inline void print_next(std::ostream &os, bool arg, Args... args) {
 }
 
 static inline void print_next(std::ostream &os, double t) {
-  if constexpr (PrintFormat::double_scientific) {
+  if constexpr (PrintFormat::fDoubleScientific) {
     os << std::scientific
-       << std::setprecision(PrintFormat::double_scientific_precision) << t;
+       << std::setprecision(PrintFormat::nDoubleScientificPrecision) << t;
   } else {
-    os << std::fixed << std::setprecision(PrintFormat::double_fixed_precision)
-       << std::setw(PrintFormat::double_fixed_width) << t;
+    os << std::fixed << std::setprecision(PrintFormat::nDoubleFixedPrecision)
+       << std::setw(PrintFormat::nDoubleFixedWidth) << t;
   }
 }
 
 template <typename... Args>
 static inline void print_next(std::ostream &os, double t, Args... args) {
-  if constexpr (PrintFormat::double_scientific) {
+  if constexpr (PrintFormat::fDoubleScientific) {
     os << std::scientific
-       << std::setprecision(PrintFormat::double_scientific_precision) << t
+       << std::setprecision(PrintFormat::nDoubleScientificPrecision) << t
        << " ";
   } else {
-    os << std::fixed << std::setprecision(PrintFormat::double_fixed_precision)
-       << std::setw(PrintFormat::double_fixed_width) << t << " ";
+    os << std::fixed << std::setprecision(PrintFormat::nDoubleFixedPrecision)
+       << std::setw(PrintFormat::nDoubleFixedWidth) << t << " ";
   }
   print_next(os, args...);
 }
 
 template <typename T>
 static inline void print_next(std::ostream &os, SW sw, T arg) {
-  if (sw.left) {
+  if (sw.fLeft) {
     os << std::left;
   }
-  os << std::setw(sw.width) << arg;
-  if (sw.left) {
+  os << std::setw(sw.nWidth) << arg;
+  if (sw.fLeft) {
     os << std::right;
   }
 }
 
 template <typename T, typename... Args>
 static inline void print_next(std::ostream &os, SW sw, T arg, Args... args) {
-  if (sw.left) {
+  if (sw.fLeft) {
     os << std::left;
   }
-  os << std::setw(sw.width) << arg << " ";
-  if (sw.left) {
+  os << std::setw(sw.nWidth) << arg << " ";
+  if (sw.fLeft) {
     os << std::right;
   }
   print_next(os, args...);
