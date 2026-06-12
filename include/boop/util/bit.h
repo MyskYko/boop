@@ -16,7 +16,7 @@ constexpr int clog2(int n) {
     return 0;
   }
 #if defined(__cpp_lib_int_pow2) && __cpp_lib_int_pow2 >= 202002L
-  return std::bit_width(n - 1);
+  return std::bit_width(static_cast<unsigned>(n - 1));
 #else
   int nResult = 0;
   --n;
