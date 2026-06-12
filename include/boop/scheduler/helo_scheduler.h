@@ -81,7 +81,7 @@ private:
     Job(int nId, Ntk *pNtk, int nSeed, Cost costInitial)
         : nId(nId), pNtk(pNtk), nSeed(nSeed), costInitial(costInitial) {
       std::stringstream ss;
-      PrintNext(ss, "job", nId, ":");
+      print_next(ss, "job", nId, ":");
       strPrefix = ss.str() + " ";
     }
   };
@@ -215,7 +215,7 @@ HeloScheduler<Ntk, Opt, Prt>::~HeloScheduler() {
 
 template <typename Ntk, typename Opt, typename Prt>
 void HeloScheduler<Ntk, Opt, Prt>::Run() {
-  timeStart_ = GetCurrentTime();
+  timeStart_ = get_current_time();
   costStart_ = par_.fnObjective(pNtk_);
   if (par_.fPartitioning) {
     RunWithPartitioning();
@@ -240,14 +240,14 @@ void HeloScheduler<Ntk, Opt, Prt>::Print(int nVerboseLevel,
     {
       std::unique_lock<std::mutex> l(mutexPrint_);
       std::cout << strPrefix;
-      PrintNext(std::cout, std::forward<Args>(args)...);
+      print_next(std::cout, std::forward<Args>(args)...);
       std::cout << std::endl;
     }
     return;
   }
 #endif
   std::cout << strPrefix;
-  PrintNext(std::cout, std::forward<Args>(args)...);
+  print_next(std::cout, std::forward<Args>(args)...);
   std::cout << std::endl;
 }
 
@@ -255,9 +255,9 @@ template <typename Ntk, typename Opt, typename Prt>
 std::string HeloScheduler<Ntk, Opt, Prt>::MakeNtkInfoString(const Ntk *pNtk,
                                                             Cost cost) const {
   std::stringstream ss;
-  PrintNext(ss, "i/o", "=", pNtk->GetNumPis(), "/", pNtk->GetNumPos(), ",",
-            "node", "=", pNtk->GetNumInts(), ",", "level", "=",
-            pNtk->GetNumLevels(), ",", "cost", "=", cost);
+  print_next(ss, "i/o", "=", pNtk->GetNumPis(), "/", pNtk->GetNumPos(), ",",
+             "node", "=", pNtk->GetNumInts(), ",", "level", "=",
+             pNtk->GetNumLevels(), ",", "cost", "=", cost);
   return ss.str();
 }
 
@@ -265,9 +265,10 @@ template <typename Ntk, typename Opt, typename Prt>
 std::string HeloScheduler<Ntk, Opt, Prt>::MakeStepInfoString(
     const Ntk *pNtk, Cost cost, Cost costInitial, Duration duration) const {
   std::stringstream ss;
-  PrintNext(ss, MakeNtkInfoString(pNtk, cost), "(",
-            100 * (cost - costInitial) / costInitial, "%", ")", ",", "duration",
-            "=", duration, "s", ",", "elapsed", "=", GetElapsedTime(), "s");
+  print_next(ss, MakeNtkInfoString(pNtk, cost), "(",
+             100 * (cost - costInitial) / costInitial, "%", ")", ",",
+             "duration", "=", duration, "s", ",", "elapsed", "=",
+             GetElapsedTime(), "s");
   return ss.str();
 }
 
@@ -296,9 +297,9 @@ Seconds HeloScheduler<Ntk, Opt, Prt>::GetRemainingTime() const {
   if (par_.nTimeout == 0) {
     return 0;
   }
-  TimePoint timeCurrent = GetCurrentTime();
+  TimePoint timeCurrent = get_current_time();
   Seconds nRemainingTime =
-      par_.nTimeout - GetDurationInSeconds(timeStart_, timeCurrent);
+      par_.nTimeout - get_duration_in_seconds(timeStart_, timeCurrent);
   if (nRemainingTime == 0) { // avoid glitch
     return -1;
   }
@@ -307,8 +308,8 @@ Seconds HeloScheduler<Ntk, Opt, Prt>::GetRemainingTime() const {
 
 template <typename Ntk, typename Opt, typename Prt>
 Duration HeloScheduler<Ntk, Opt, Prt>::GetElapsedTime() const {
-  TimePoint timeCurrent = GetCurrentTime();
-  return GetDuration(timeStart_, timeCurrent);
+  TimePoint timeCurrent = get_current_time();
+  return get_duration(timeStart_, timeCurrent);
 }
 
 // abc
@@ -320,18 +321,18 @@ void HeloScheduler<Ntk, Opt, Prt>::CallAbc(Ntk *pNtk, std::string command,
   if (fMultithreaded_) {
     {
       std::unique_lock<std::mutex> l(mutexAbc_);
-      TimePoint timeStartAbc = GetCurrentTime();
+      TimePoint timeStartAbc = get_current_time();
       Abc9Execute(pNtk, command);
-      TimePoint timeEndAbc = GetCurrentTime();
-      duration += GetDuration(timeStartAbc, timeEndAbc);
+      TimePoint timeEndAbc = get_current_time();
+      duration += get_duration(timeStartAbc, timeEndAbc);
     }
     return;
   }
 #endif
-  TimePoint timeStartAbc = GetCurrentTime();
+  TimePoint timeStartAbc = get_current_time();
   Abc9Execute(pNtk, command);
-  TimePoint timeEndAbc = GetCurrentTime();
-  duration += GetDuration(timeStartAbc, timeEndAbc);
+  TimePoint timeEndAbc = get_current_time();
+  duration += get_duration(timeStartAbc, timeEndAbc);
 }
 
 // execute jobs
@@ -463,7 +464,7 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteAbcLoopFlow(Opt &opt, Job *pJob,
 
 template <typename Ntk, typename Opt, typename Prt>
 void HeloScheduler<Ntk, Opt, Prt>::ExecuteJob(Opt &opt, Job *pJob) {
-  TimePoint timeStartLocal = GetCurrentTime();
+  TimePoint timeStartLocal = get_current_time();
   opt.AssignNetwork(pJob->pNtk,
                     !par_.fPartitioning); // reuse backend if restarting
   opt.SetPrintLine(
@@ -485,8 +486,8 @@ void HeloScheduler<Ntk, Opt, Prt>::ExecuteJob(Opt &opt, Job *pJob) {
   default:
     assert(0);
   }
-  TimePoint timeEndLocal = GetCurrentTime();
-  pJob->duration = GetDuration(timeStartLocal, timeEndLocal);
+  TimePoint timeEndLocal = get_current_time();
+  pJob->duration = get_duration(timeStartLocal, timeEndLocal);
   pJob->summaryStats = opt.GetStatsSummary();
   pJob->summaryTimes = opt.GetTimesSummary();
   pJob->summaryTimes.emplace_back("abc", durationAbc);
@@ -627,7 +628,7 @@ void HeloScheduler<Ntk, Opt, Prt>::RunWithPartitioning() {
       }
     }
     if (nCreatedJobs_ == nFinishedJobs_) {
-      PrintWarning("failed to partition");
+      print_warning("failed to partition");
       break;
     }
     while (nFinishedJobs_ < nCreatedJobs_) {

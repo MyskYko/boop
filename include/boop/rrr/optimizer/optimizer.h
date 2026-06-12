@@ -113,10 +113,10 @@ private:
 
     std::string GetString() const {
       std::stringstream ss;
-      PrintNext(ss, "tried node/fanin", "=", nTried, "/", nTriedFis, ",",
-                "added node/fanin", "=", nAdded, "/", nAddedFis, ",", "changed",
-                "=", nChanged, ",", "up/eq/dn", "=", nUps, "/", nEqs, "/",
-                nDowns);
+      print_next(ss, "tried node/fanin", "=", nTried, "/", nTriedFis, ",",
+                 "added node/fanin", "=", nAdded, "/", nAddedFis, ",",
+                 "changed", "=", nChanged, ",", "up/eq/dn", "=", nUps, "/",
+                 nEqs, "/", nDowns);
       return ss.str();
     }
   };
@@ -257,7 +257,7 @@ void Optimizer<Ntk, Ana>::Run(int nSeed, Seconds nTimeout) {
     Print(0, "fanin cost function =", nSortType_);
   }
   nTimeout_ = nTimeout;
-  timeStart_ = GetCurrentTime();
+  timeStart_ = get_current_time();
   if (par_.fSortInitial) {
     SortFanins();
   }
@@ -430,7 +430,7 @@ void Optimizer<Ntk, Ana>::Print(int nVerboseLevel, Args &&...args) {
     for (int i = 0; i < nVerboseLevel; i++) {
       ss << "\t";
     }
-    PrintNext(ss, std::forward<Args>(args)...);
+    print_next(ss, std::forward<Args>(args)...);
     fnPrintLine_(ss.str());
   }
 }
@@ -509,7 +509,7 @@ void Optimizer<Ntk, Ana>::MarkTfo(int nId) {
 
 template <typename Ntk, typename Ana> bool Optimizer<Ntk, Ana>::Timeout() {
   if (nTimeout_) {
-    if (GetDurationInSeconds(timeStart_, GetCurrentTime()) > nTimeout_) {
+    if (get_duration_in_seconds(timeStart_, get_current_time()) > nTimeout_) {
       return true;
     }
   }
@@ -839,7 +839,7 @@ bool Optimizer<Ntk, Ana>::RemoveRedundancyOneTraversal(bool fRandom,
                                                        bool fSubRoutine) {
   TimePoint timeStart;
   if (!fSubRoutine) {
-    timeStart = GetCurrentTime();
+    timeStart = get_current_time();
   }
   bool fReduced = false;
   std::vector<int> vInts = pNtk_->GetInts();
@@ -867,15 +867,15 @@ bool Optimizer<Ntk, Ana>::RemoveRedundancyOneTraversal(bool fRandom,
     }
   }
   if (!fSubRoutine) {
-    TimePoint timeEnd = GetCurrentTime();
-    statsLocal_.durationReduce += GetDuration(timeStart, timeEnd);
+    TimePoint timeEnd = get_current_time();
+    statsLocal_.durationReduce += get_duration(timeStart, timeEnd);
   }
   return fReduced;
 }
 
 template <typename Ntk, typename Ana>
 bool Optimizer<Ntk, Ana>::RemoveRedundancy(bool fRandom) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   bool fReduced = false;
   while (RemoveRedundancyOneTraversal(fRandom, true)) {
     fReduced = true;
@@ -883,8 +883,8 @@ bool Optimizer<Ntk, Ana>::RemoveRedundancy(bool fRandom) {
       SortFanins();
     }
   }
-  TimePoint timeEnd = GetCurrentTime();
-  statsLocal_.durationReduce += GetDuration(timeStart, timeEnd);
+  TimePoint timeEnd = get_current_time();
+  statsLocal_.durationReduce += get_duration(timeStart, timeEnd);
   return fReduced;
 }
 
@@ -910,7 +910,7 @@ template <typename Ntk, typename Ana> bool Optimizer<Ntk, Ana>::Reduce() {
 template <typename Ntk, typename Ana>
 template <typename T>
 T Optimizer<Ntk, Ana>::SingleAdd(int nId, T begin, T end) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   MarkTfo(nId);
   pNtk_->ForEachFanin(nId, [&](int nFi) { vTfoMarks_[nFi] = true; });
   T it = begin;
@@ -937,14 +937,14 @@ T Optimizer<Ntk, Ana>::SingleAdd(int nId, T begin, T end) {
     break;
   }
   pNtk_->ForEachFanin(nId, [&](int nFi) { vTfoMarks_[nFi] = false; });
-  TimePoint timeEnd = GetCurrentTime();
-  statsLocal_.durationAdd += GetDuration(timeStart, timeEnd);
+  TimePoint timeEnd = get_current_time();
+  statsLocal_.durationAdd += get_duration(timeStart, timeEnd);
   return it;
 }
 
 template <typename Ntk, typename Ana>
 int Optimizer<Ntk, Ana>::MultiAdd(int nId, const std::vector<int> &vCands) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   MarkTfo(nId);
   pNtk_->ForEachFanin(nId, [&](int nFi) { vTfoMarks_[nFi] = true; });
   int nAddedFis = 0;
@@ -973,8 +973,8 @@ int Optimizer<Ntk, Ana>::MultiAdd(int nId, const std::vector<int> &vCands) {
     }
   }
   pNtk_->ForEachFanin(nId, [&](int nFi) { vTfoMarks_[nFi] = false; });
-  TimePoint timeEnd = GetCurrentTime();
-  statsLocal_.durationAdd += GetDuration(timeStart, timeEnd);
+  TimePoint timeEnd = get_current_time();
+  statsLocal_.durationAdd += get_duration(timeStart, timeEnd);
   return nAddedFis;
 }
 
@@ -1398,7 +1398,7 @@ void Optimizer<Ntk, Ana>::ApplyCombinationRandomly(
                rng_); // order is decided here, so it's not truly exhaustive
   int nTried = 0;
   int nCombs = k * (k - 1) / 2;
-  ForEachCombination(int_size(vInts), k, [&](const std::vector<int> &vIdxs) {
+  for_each_combination(int_size(vInts), k, [&](const std::vector<int> &vIdxs) {
     Print(1, "comb", vIdxs, "(", ++nTried, "/", nCombs, ")");
     assert(int_size(vIdxs) == k);
     if (Timeout()) {

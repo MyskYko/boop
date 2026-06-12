@@ -184,13 +184,13 @@ int boop_helo_params_parse_argv(BoopHeloParams *params, char *input_path,
     program.parse_args(argc, argv);
     StoreHeloParams(params, program);
     if (const auto input = program.present<std::string>("input")) {
-      if (!boop::CopyString(input_path, input_path_size, *input)) {
+      if (!boop::copy_string(input_path, input_path_size, *input)) {
         std::cerr << "input path buffer is invalid or too small\n";
         return 1;
       }
     }
     if (const auto output = program.present<std::string>("output")) {
-      if (!boop::CopyString(output_path, output_path_size, *output)) {
+      if (!boop::copy_string(output_path, output_path_size, *output)) {
         std::cerr << "output path buffer is invalid or too small\n";
         return 1;
       }

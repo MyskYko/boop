@@ -16,7 +16,7 @@ namespace boop {
 
 // warning
 
-static inline void PrintWarning(std::string const &message) {
+static inline void print_warning(std::string const &message) {
   std::cerr << "[w] " << message << std::endl;
 }
 
@@ -48,7 +48,7 @@ std::ostream &operator<<(std::ostream &os, std::set<T> const &s) {
 
 // complemented edges
 
-static inline void PrintComplementedEdges(
+static inline void print_complemented_edges(
     std::function<void(std::function<void(int, bool)> const &)> const
         &forEachEdge) {
   std::string delim;
@@ -78,33 +78,33 @@ struct PrintFormat {
   static constexpr int double_fixed_precision = 2;
 };
 
-template <typename T> void PrintNext(std::ostream &os, T t);
+template <typename T> void print_next(std::ostream &os, T t);
 template <typename T, typename... Args>
-void PrintNext(std::ostream &os, T t, Args... args);
+void print_next(std::ostream &os, T t, Args... args);
 
-static inline void PrintNext(std::ostream &os, int t) {
+static inline void print_next(std::ostream &os, int t) {
   os << std::setw(PrintFormat::int_width) << t;
 }
 
 template <typename... Args>
-static inline void PrintNext(std::ostream &os, int t, Args... args) {
+static inline void print_next(std::ostream &os, int t, Args... args) {
   os << std::setw(PrintFormat::int_width) << t << " ";
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
-static inline void PrintNext(std::ostream &os, bool arg) { os << arg; }
+static inline void print_next(std::ostream &os, bool arg) { os << arg; }
 
 template <typename... Args>
-static inline void PrintNext(std::ostream &os, bool arg, Args... args) {
+static inline void print_next(std::ostream &os, bool arg, Args... args) {
   if (arg) {
     os << "!";
   } else {
     os << " ";
   }
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
-static inline void PrintNext(std::ostream &os, double t) {
+static inline void print_next(std::ostream &os, double t) {
   if constexpr (PrintFormat::double_scientific) {
     os << std::scientific
        << std::setprecision(PrintFormat::double_scientific_precision) << t;
@@ -115,7 +115,7 @@ static inline void PrintNext(std::ostream &os, double t) {
 }
 
 template <typename... Args>
-static inline void PrintNext(std::ostream &os, double t, Args... args) {
+static inline void print_next(std::ostream &os, double t, Args... args) {
   if constexpr (PrintFormat::double_scientific) {
     os << std::scientific
        << std::setprecision(PrintFormat::double_scientific_precision) << t
@@ -124,11 +124,11 @@ static inline void PrintNext(std::ostream &os, double t, Args... args) {
     os << std::fixed << std::setprecision(PrintFormat::double_fixed_precision)
        << std::setw(PrintFormat::double_fixed_width) << t << " ";
   }
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
 template <typename T>
-static inline void PrintNext(std::ostream &os, SW sw, T arg) {
+static inline void print_next(std::ostream &os, SW sw, T arg) {
   if (sw.left) {
     os << std::left;
   }
@@ -139,7 +139,7 @@ static inline void PrintNext(std::ostream &os, SW sw, T arg) {
 }
 
 template <typename T, typename... Args>
-static inline void PrintNext(std::ostream &os, SW sw, T arg, Args... args) {
+static inline void print_next(std::ostream &os, SW sw, T arg, Args... args) {
   if (sw.left) {
     os << std::left;
   }
@@ -147,66 +147,66 @@ static inline void PrintNext(std::ostream &os, SW sw, T arg, Args... args) {
   if (sw.left) {
     os << std::right;
   }
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
 template <typename T, typename... Args>
-static inline void PrintNext(std::ostream &os, NS ns, T arg, Args... args) {
+static inline void print_next(std::ostream &os, NS ns, T arg, Args... args) {
   (void)ns;
   os << arg;
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
 template <typename T>
-static inline void PrintNext(std::ostream &os, std::vector<T> const &arg) {
+static inline void print_next(std::ostream &os, std::vector<T> const &arg) {
   os << "[ ";
   for (T const &e : arg) {
-    PrintNext(os, e);
+    print_next(os, e);
     os << " ";
   }
   os << "]";
 }
 
 template <typename T, typename... Args>
-static inline void PrintNext(std::ostream &os, std::vector<T> const &arg,
-                             Args... args) {
+static inline void print_next(std::ostream &os, std::vector<T> const &arg,
+                              Args... args) {
   os << "[ ";
   for (T const &e : arg) {
-    PrintNext(os, e);
+    print_next(os, e);
     os << " ";
   }
   os << "] ";
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
 template <typename T>
-static inline void PrintNext(std::ostream &os, std::set<T> const &arg) {
+static inline void print_next(std::ostream &os, std::set<T> const &arg) {
   os << "{ ";
   for (T const &e : arg) {
-    PrintNext(os, e);
+    print_next(os, e);
     os << " ";
   }
   os << "}";
 }
 
 template <typename T, typename... Args>
-static inline void PrintNext(std::ostream &os, std::set<T> const &arg,
-                             Args... args) {
+static inline void print_next(std::ostream &os, std::set<T> const &arg,
+                              Args... args) {
   os << "{ ";
   for (T const &e : arg) {
-    PrintNext(os, e);
+    print_next(os, e);
     os << " ";
   }
   os << "} ";
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
-template <typename T> void PrintNext(std::ostream &os, T t) { os << t; }
+template <typename T> void print_next(std::ostream &os, T t) { os << t; }
 
 template <typename T, typename... Args>
-void PrintNext(std::ostream &os, T t, Args... args) {
+void print_next(std::ostream &os, T t, Args... args) {
   os << t << " ";
-  PrintNext(os, args...);
+  print_next(os, args...);
 }
 
 } // namespace boop

@@ -115,7 +115,7 @@ void SatBasedSolver<Ntk, Sol>::SetPrintLine(
 template <typename Ntk, typename Sol>
 typename SatBasedSolver<Ntk, Sol>::Result
 SatBasedSolver<Ntk, Sol>::CheckRedundancy(int nId, int nIdx) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   if (fUpdate_ || nId != nTarget_) {
     fUpdate_ = false;
     nTarget_ = nId;
@@ -123,7 +123,7 @@ SatBasedSolver<Ntk, Sol>::CheckRedundancy(int nId, int nIdx) {
   }
   if (fTrivialUnsat_) {
     Print(0, "trivially UNSATISFIABLE");
-    durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
+    durationRedundancy_ += get_duration(timeStart, get_current_time());
     return Result::UNSAT;
   }
   vLits_.clear();
@@ -143,12 +143,12 @@ SatBasedSolver<Ntk, Sol>::CheckRedundancy(int nId, int nIdx) {
   if (status == solver::Status::UNSAT) {
     Print(0, "UNSATISFIABLE");
     nUnsats_++;
-    durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
+    durationRedundancy_ += get_duration(timeStart, get_current_time());
     return Result::UNSAT;
   }
   if (status == solver::Status::UNDET) {
     Print(0, "UNDETERMINED");
-    durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
+    durationRedundancy_ += get_duration(timeStart, get_current_time());
     return Result::UNDET;
   }
   assert(status == solver::Status::SAT);
@@ -170,14 +170,14 @@ SatBasedSolver<Ntk, Sol>::CheckRedundancy(int nId, int nIdx) {
         vValues_[nFi] = DecideVarValue(vValues_[nFi]);
         vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
       });
-  durationRedundancy_ += GetDuration(timeStart, GetCurrentTime());
+  durationRedundancy_ += get_duration(timeStart, get_current_time());
   return Result::SAT;
 }
 
 template <typename Ntk, typename Sol>
 typename SatBasedSolver<Ntk, Sol>::Result
 SatBasedSolver<Ntk, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   if (fUpdate_ || nId != nTarget_) {
     fUpdate_ = false;
     nTarget_ = nId;
@@ -185,7 +185,7 @@ SatBasedSolver<Ntk, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
   }
   if (fTrivialUnsat_) {
     Print(0, "trivially UNSATISFIABLE");
-    durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
+    durationFeasibility_ += get_duration(timeStart, get_current_time());
     return Result::UNSAT;
   }
   vLits_.clear();
@@ -199,12 +199,12 @@ SatBasedSolver<Ntk, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
   if (status == solver::Status::UNSAT) {
     Print(0, "UNSATISFIABLE");
     nUnsats_++;
-    durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
+    durationFeasibility_ += get_duration(timeStart, get_current_time());
     return Result::UNSAT;
   }
   if (status == solver::Status::UNDET) {
     Print(0, "UNDETERMINED");
-    durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
+    durationFeasibility_ += get_duration(timeStart, get_current_time());
     return Result::UNDET;
   }
   assert(status == solver::Status::SAT);
@@ -228,7 +228,7 @@ SatBasedSolver<Ntk, Sol>::CheckFeasibility(int nId, int nFi, bool fCompl) {
   assert((vValuesInv_[nFi] == TEMP_TRUE) ^ !fCompl);
   vValues_[nFi] = DecideVarValue(vValues_[nFi]);
   vValuesInv_[nFi] = DecideVarValue(vValuesInv_[nFi]);
-  durationFeasibility_ += GetDuration(timeStart, GetCurrentTime());
+  durationFeasibility_ += get_duration(timeStart, get_current_time());
   return Result::SAT;
 }
 
@@ -420,7 +420,7 @@ void SatBasedSolver<Ntk, Sol>::Print(int nVerboseLevel, Args &&...args) {
     for (int i = 0; i < nVerboseLevel; i++) {
       ss << "\t";
     }
-    PrintNext(ss, std::forward<Args>(args)...);
+    print_next(ss, std::forward<Args>(args)...);
     fnPrintLine_(ss.str());
   }
 }

@@ -1774,14 +1774,14 @@ inline void AndNetwork::Print() const {
   std::cout << "inputs: " << vPis_ << std::endl;
   ForEachInt([&](int nId) {
     std::cout << "node " << nId << ": ";
-    PrintComplementedEdges([&](const std::function<void(int, bool)> &func) {
+    print_complemented_edges([&](const std::function<void(int, bool)> &func) {
       ForEachFanin(nId, func);
     });
     std::cout << " (ref = " << vRefs_[nId] << ")";
     std::cout << std::endl;
   });
   std::cout << "outputs: ";
-  PrintComplementedEdges([&](const std::function<void(int, bool)> &func) {
+  print_complemented_edges([&](const std::function<void(int, bool)> &func) {
     ForEachPoDriver(func);
   });
   std::cout << std::endl;

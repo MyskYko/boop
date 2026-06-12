@@ -83,30 +83,30 @@ static inline std::stringstream GetActionDescription(Action const &action) {
   std::string delim = " : ";
   if (action.id != -1) {
     ss << delim;
-    PrintNext(ss, "node", action.id);
+    print_next(ss, "node", action.id);
     delim = " , ";
   }
   if (action.fi != -1) {
     ss << delim;
-    PrintNext(ss, "fanin", static_cast<bool>(action.c), action.fi);
+    print_next(ss, "fanin", static_cast<bool>(action.c), action.fi);
     delim = " , ";
   }
   if (action.idx != -1) {
     ss << delim;
-    PrintNext(ss, "index", action.idx);
+    print_next(ss, "index", action.idx);
   }
   ss << std::endl;
   if (!action.vFanins.empty()) {
     ss << "fanins : ";
-    PrintNext(ss, action.vFanins);
+    print_next(ss, action.vFanins);
   }
   if (!action.vIndices.empty()) {
     ss << "indices : ";
-    PrintNext(ss, action.vIndices);
+    print_next(ss, action.vIndices);
   }
   if (!action.vFanouts.empty()) {
     ss << "fanouts : ";
-    PrintNext(ss, action.vFanouts);
+    print_next(ss, action.vFanouts);
   }
   return ss;
 }

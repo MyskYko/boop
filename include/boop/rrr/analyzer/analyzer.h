@@ -159,7 +159,7 @@ void Analyzer<Ntk, Sim, Sat>::Print(int nVerboseLevel, Args &&...args) {
     for (int i = 0; i < nVerboseLevel; i++) {
       ss << "\t";
     }
-    PrintNext(ss, std::forward<Args>(args)...);
+    print_next(ss, std::forward<Args>(args)...);
     fnPrintLine_(ss.str());
   }
 }

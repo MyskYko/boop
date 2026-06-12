@@ -318,7 +318,7 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
   SimulateOneWord(nWord);
   // recompute care with new stimulus
   if (nTarget_ != -1 && !pNtk_->IsPoDriver(nTarget_)) {
-    TimePoint timeStart = GetCurrentTime();
+    TimePoint timeStart = get_current_time();
     Print(0, "recomputing careset of", nTarget_);
     vValuesInv_.resize(nWords_ * pNtk_->GetNumNodes());
     StartTraversal();
@@ -377,7 +377,7 @@ void Simulator<Ntk>::AddCex(const std::vector<VarValue> &vCex) {
     });
     Print(1, "care", nTarget_);
     PrintBits(2, 1, vCare_.begin() + nWord);
-    durationCare_ += GetDuration(timeStart, GetCurrentTime());
+    durationCare_ += get_duration(timeStart, get_current_time());
   }
   nCex_++;
 }
@@ -433,7 +433,7 @@ void Simulator<Ntk>::Print(int nVerboseLevel, Args &&...args) {
     for (int i = 0; i < nVerboseLevel; i++) {
       ss << "\t";
     }
-    PrintNext(ss, std::forward<Args>(args)...);
+    print_next(ss, std::forward<Args>(args)...);
     fnPrintLine_(ss.str());
   }
 }
@@ -642,18 +642,18 @@ void Simulator<Ntk>::SimulateOneWordNode(std::vector<Word> &v, int nId,
 }
 
 template <typename Ntk> void Simulator<Ntk>::Simulate() {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   Print(0, "simulating");
   pNtk_->ForEachInt([&](int nId) {
     SimulateNode(vValues_, nId);
     Print(1, "simulating", "node", nId);
     PrintBits(2, nWords_, vValues_.begin() + nId * nWords_);
   });
-  durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
+  durationSimulation_ += get_duration(timeStart, get_current_time());
 }
 
 template <typename Ntk> void Simulator<Ntk>::Resimulate() {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   Print(0, "resimulating");
   pNtk_->template ForEachTfos<false, false, true, false>(
       sUpdates_, [&](int nId) {
@@ -669,18 +669,18 @@ template <typename Ntk> void Simulator<Ntk>::Resimulate() {
     }
   });
   */
-  durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
+  durationSimulation_ += get_duration(timeStart, get_current_time());
 }
 
 template <typename Ntk> void Simulator<Ntk>::SimulateOneWord(int nOffset) {
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   Print(0, "simulating word", nOffset);
   pNtk_->ForEachInt([&](int nId) {
     SimulateOneWordNode(vValues_, nId, nOffset);
     Print(1, "simulating word", nOffset, "node", nId);
     PrintBits(2, 1, vValues_.begin() + nId * nWords_ + nOffset);
   });
-  durationSimulation_ += GetDuration(timeStart, GetCurrentTime());
+  durationSimulation_ += get_duration(timeStart, get_current_time());
 }
 
 // generate stimuli
@@ -746,13 +746,13 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
     sUpdates_.clear();
   }
   nTarget_ = nId;
-  TimePoint timeStart = GetCurrentTime();
+  TimePoint timeStart = get_current_time();
   Print(0, "computing careset of", nTarget_);
   if (pNtk_->IsPoDriver(nTarget_)) {
     vec_ops::Fill(nWords_, vCare_.begin());
     Print(1, "care", nTarget_);
     PrintBits(2, nWords_, vCare_.begin());
-    durationCare_ += GetDuration(timeStart, GetCurrentTime());
+    durationCare_ += get_duration(timeStart, get_current_time());
     return;
   }
   // TFO computation
@@ -813,7 +813,7 @@ template <typename Ntk> void Simulator<Ntk>::ComputeCare(int nId) {
   });
   Print(1, "care", nTarget_);
   PrintBits(2, nWords_, vCare_.begin());
-  durationCare_ += GetDuration(timeStart, GetCurrentTime());
+  durationCare_ += get_duration(timeStart, get_current_time());
 }
 
 // preparation

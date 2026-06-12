@@ -9,7 +9,7 @@ BOOP_HEADER_START
 
 namespace boop {
 
-inline bool CopyString(char *dst, int dst_size, std::string_view src) {
+inline bool copy_string(char *dst, int dst_size, std::string_view src) {
   if (dst == nullptr) {
     return true;
   }
