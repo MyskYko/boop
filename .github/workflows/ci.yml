@@ -26,6 +26,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libreadline-dev
+
       - name: Configure
         run: cmake -S . -B build/${{ matrix.name }} -DCMAKE_BUILD_TYPE=Release ${{ matrix.options }}
 
@@ -48,7 +53,7 @@ jobs:
       - name: Install coverage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcovr
+          sudo apt-get install -y gcovr libreadline-dev
 
       - name: Configure
         run: cmake -S . -B build/coverage -DCMAKE_BUILD_TYPE=Debug -DBOOP_ENABLE_COVERAGE=ON
