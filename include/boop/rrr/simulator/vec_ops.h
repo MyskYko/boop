@@ -1,8 +1,14 @@
 #pragma once
 
 #include <algorithm>
+#include <bitset>
 #include <iterator>
 #include <climits>
+#include <cstddef>
+#include <sstream>
+#include <string>
+
+#include "boop/config.h"
 
 BOOP_HEADER_START
 
@@ -168,4 +174,3 @@ namespace boop::vec_ops {
 } // namespace boop::vec_ops
   
 BOOP_HEADER_END
-

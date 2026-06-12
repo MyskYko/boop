@@ -5,7 +5,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <cassert>
+
+#include "boop/config.h"
 
 BOOP_HEADER_START
 

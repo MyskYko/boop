@@ -1,4 +1,5 @@
 #include "boop/api/helo.h"
+#include "boop/config.h"
 
 #ifdef BOOP_USE_ARGPARSE
 #include "argparse/argparse.hpp"

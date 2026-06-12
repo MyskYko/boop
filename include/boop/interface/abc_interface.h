@@ -1,12 +1,17 @@
 #pragma once
 
+#include <string>
+
+#include "boop/config.h"
+
 #ifdef BOOP_USE_ABC
 
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <string>
 #include <vector>
+
+#include "boop/network/types.h"
 
 #include "aig/gia/gia.h"
 #include "base/main/main.h"

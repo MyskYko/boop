@@ -1,12 +1,18 @@
 #pragma once
 
+#include <algorithm>
+#include <cassert>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <queue>
 #include <random>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
+
+#include "boop/config.h"
 
 #ifdef BOOP_USE_THREADS
 #include <condition_variable>

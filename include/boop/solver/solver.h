@@ -1,12 +1,15 @@
 #pragma once
 
+#include <cassert>
 #include <initializer_list>
 #include <vector>
 #include <set>
 #include <cstdlib>
 #include <type_traits>
 
+#include "boop/config.h"
 #include "boop/solver/types.h"
+#include "boop/util/size.h"
 
 BOOP_HEADER_START
 

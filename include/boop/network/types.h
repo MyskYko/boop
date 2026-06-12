@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cassert>
 #include <string>
 #include <sstream>
 #include <vector>
 
+#include "boop/config.h"
 #include "boop/util/print.h"
 
 BOOP_HEADER_START

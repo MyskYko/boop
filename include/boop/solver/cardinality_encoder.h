@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vector>
 #include <algorithm>
+#include <cassert>
+#include <vector>
 
+#include "boop/config.h"
 #include "boop/util/util.h"
 
 BOOP_HEADER_START

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "boop/apps/helo_types.h"
+#include "boop/config.h"
 
 BOOP_C_HEADER_START
 

@@ -3,6 +3,8 @@
 #include <functional>
 #include <vector>
 
+#include "boop/config.h"
+
 BOOP_HEADER_START
 
 namespace boop {

@@ -3,6 +3,7 @@
 #include <cassert>
 #include <chrono>
 
+#include "boop/config.h"
 #include "boop/util/types.h"
 
 BOOP_HEADER_START

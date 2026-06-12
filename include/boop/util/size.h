@@ -4,6 +4,8 @@
 #include <iterator>
 #include <limits>
 
+#include "boop/config.h"
+
 BOOP_HEADER_START
 
 namespace boop {

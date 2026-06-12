@@ -1,5 +1,11 @@
 #pragma once
 
+#include <functional>
+#include <sstream>
+#include <string>
+#include <utility>
+
+#include "boop/config.h"
 #include "boop/util/util.h"
 
 BOOP_HEADER_START

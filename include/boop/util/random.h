@@ -1,5 +1,7 @@
 #pragma once
 
+#include "boop/config.h"
+
 BOOP_HEADER_START
 
 namespace boop {

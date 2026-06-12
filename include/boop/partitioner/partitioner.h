@@ -2,15 +2,18 @@
 
 #include <algorithm>
 #include <cassert>
+#include <functional>
 #include <map>
 #include <memory>
 #include <random>
 #include <set>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
 
+#include "boop/config.h"
 #include "boop/util/util.h"
 
 BOOP_HEADER_START

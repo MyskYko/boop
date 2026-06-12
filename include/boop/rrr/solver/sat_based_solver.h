@@ -1,8 +1,17 @@
 #pragma once
 
+#include <cassert>
+#include <functional>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "boop/config.h"
 #include "boop/util/util.h"
 #include "boop/network/types.h"
 #include "boop/rrr/types.h"
+#include "boop/solver/types.h"
 
 BOOP_HEADER_START
 

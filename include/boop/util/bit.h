@@ -4,6 +4,8 @@
 #include <bit>
 #include <cassert>
 
+#include "boop/config.h"
+
 BOOP_HEADER_START
 
 namespace boop {

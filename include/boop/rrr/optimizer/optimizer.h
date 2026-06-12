@@ -1,13 +1,19 @@
 #pragma once
 
+#include <algorithm>
+#include <cassert>
 #include <functional>
-#include <iterator>
+#include <limits>
 #include <map>
 #include <numeric>
 #include <random>
+#include <set>
+#include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "boop/config.h"
 #include "boop/util/util.h"
 #include "boop/network/types.h"
 

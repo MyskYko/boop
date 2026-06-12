@@ -4,6 +4,8 @@
 #include <type_traits>
 #include <utility>
 
+#include "boop/config.h"
+
 BOOP_HEADER_START
 
 namespace boop {
