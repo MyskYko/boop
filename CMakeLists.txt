@@ -27,7 +27,7 @@ if(BOOP_USE_THREADS)
 endif()
 
 if(BOOP_USE_ABC)
-  set(ABC_USE_NAMESPACE abys_abc CACHE STRING "Namespace for ABC integration" FORCE)
+  set(ABC_USE_NAMESPACE boop_abc CACHE STRING "Namespace for ABC integration" FORCE)
   set(ABC_SKIP_TESTS ON CACHE BOOL "" FORCE)
   add_subdirectory(third_party/abc)
   get_target_property(BOOP_LIBABC_INTERFACE_OPTIONS libabc INTERFACE_COMPILE_OPTIONS)
