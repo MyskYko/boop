@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <type_traits>
 
+#include "boop/solver/types.h"
+
 BOOP_HEADER_START
 
 namespace boop::solver {
@@ -22,12 +24,6 @@ namespace boop::solver {
   template <typename T>
   struct has_is_inconsistent<T, std::void_t<decltype(std::declval<T &>().IsInconsistent())>>: std::true_type {};
   
-  enum class Status {
-    SAT,
-    UNSAT,
-    UNDET,
-  };
-    
   template <typename Internal, template <typename> class Logic, template <typename> class Cardi>
   class Solver {
   public:

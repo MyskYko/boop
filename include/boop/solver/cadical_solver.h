@@ -5,6 +5,8 @@
 #include <set>
 #include <vector>
 
+#include "boop/solver/types.h"
+
 #if defined(BOOP_USE_CADICAL_IN_ABC)
 #include <sat/cadical/cadical.hpp>
 #else
