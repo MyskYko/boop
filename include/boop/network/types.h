@@ -12,7 +12,7 @@ BOOP_HEADER_START
 
 namespace boop {
 
-enum NodeType { PI, PO, AND, XOR, LUT };
+enum NodeType { CONST, PI, PO, AND, XOR, LUT, CELL, BLACK_BOX };
 
 enum ActionType {
   NONE,
