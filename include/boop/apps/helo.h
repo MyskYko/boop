@@ -35,7 +35,6 @@ private:
   template <typename Opt, typename Prt>
   typename HeloScheduler<Ntk, Opt, Prt>::Parameter MakeSchedulerParams() const {
     typename HeloScheduler<Ntk, Opt, Prt>::Parameter par;
-
     par.fnObjective = [this](Ntk *pNtk) { return GetTwoInputSize(pNtk); };
     par.nVerbose = params_.nVerbose;
     par.nSeed = params_.nSeed;
@@ -47,7 +46,6 @@ private:
     par.fPartitioning = params_.fPartitioning;
     par.nParallelPartitions = params_.nParallelPartitions;
     par.fOptOnInsert = params_.fOptOnInsert;
-
     par.parOpt.nVerbose = params_.nOptimizerVerbose;
     par.parOpt.nSortType = params_.nSortType;
     par.parOpt.fSortInitial = params_.fSortInitial;
@@ -58,12 +56,10 @@ private:
     par.parOpt.fCompatible = params_.fCompatible;
     par.parOpt.fGreedy = params_.fGreedy;
     par.parOpt.fNonlinearCost = params_.fNonlinearCost;
-
     par.parPrt.nVerbose = params_.nPartitionerVerbose;
     par.parPrt.nPartitionSize = params_.nPartitionSize;
     par.parPrt.nPartitionSizeMin = params_.nPartitionSizeMin;
     par.parPrt.nPartitionInputMax = params_.nPartitionInputMax;
-
     return par;
   }
 
