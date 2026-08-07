@@ -8,12 +8,16 @@ option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
 option(BOOP_USE_ABC "Build boop with ABC integration" ON)
 option(BOOP_USE_MOCKTURTLE "Build boop with mockturtle integration" ON)
+option(BOOP_USE_RINOX "Build boop with RinoX bridge" OFF)
 option(BOOP_USE_ARGPARSE "Build argv parsing support with argparse" ON)
 option(BOOP_USE_CADICAL_IN_ABC "Use the Cadical copy bundled in ABC" OFF)
 option(BOOP_ENABLE_COVERAGE "Build boop with coverage instrumentation" OFF)
 
 if(BOOP_USE_CADICAL_IN_ABC AND NOT BOOP_USE_ABC)
   message(FATAL_ERROR "BOOP_USE_CADICAL_IN_ABC requires BOOP_USE_ABC")
+endif()
+if(BOOP_BUILD_PROGRAMS AND NOT BOOP_USE_ARGPARSE)
+  message(FATAL_ERROR "BOOP_BUILD_PROGRAMS requires BOOP_USE_ARGPARSE")
 endif()
 
 add_library(boop_headers INTERFACE)
@@ -64,10 +68,30 @@ if(BOOP_USE_ABC)
 endif()
 
 if(BOOP_USE_MOCKTURTLE)
+  set(MOCKTURTLE_ENABLE_NAUTY ON CACHE BOOL "" FORCE)
   set(MOCKTURTLE_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(MOCKTURTLE_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   set(MOCKTURTLE_BUILD_EXPERIMENTS OFF CACHE BOOL "" FORCE)
   add_subdirectory(third_party/mockturtle)
+endif()
+
+add_library(boop_rinox_interface src/interface/rinox_interface.cpp)
+add_library(boop::rinox_interface ALIAS boop_rinox_interface)
+target_link_libraries(boop_rinox_interface PRIVATE
+  boop::headers
+)
+if(BOOP_USE_RINOX)
+  set(RINOX_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+  set(RINOX_ENABLE_EXPERIMENTS OFF CACHE BOOL "" FORCE)
+  set(RINOX_ENABLE_CLI OFF CACHE BOOL "" FORCE)
+  set(RINOX_VERBOSE_COMPILE OFF CACHE BOOL "" FORCE)
+  add_subdirectory(third_party/rinox)
+  target_compile_definitions(boop_rinox_interface PRIVATE
+    BOOP_USE_RINOX
+  )
+  target_link_libraries(boop_rinox_interface PRIVATE
+    rinox::rinox
+  )
 endif()
 
 if(BOOP_USE_ARGPARSE)

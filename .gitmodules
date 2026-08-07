@@ -9,4 +9,9 @@
 	url = https://github.com/MyskYko/abc.git
 [submodule "third_party/mockturtle"]
 	path = third_party/mockturtle
-	url = https://github.com/MyskYko/mockturtle.git
+	url = https://github.com/exsynth/mockturtle.git
+	branch = boop
+[submodule "third_party/rinox"]
+	path = third_party/rinox
+	url = https://github.com/exsynth/rinox.git
+	branch = boop
