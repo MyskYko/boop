@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(boop LANGUAGES C CXX)
 
-enable_testing()
-
 option(BOOP_BUILD_PROGRAMS "Build boop programs" ON)
 option(BOOP_USE_THREADS "Build boop with thread support" OFF)
 option(BOOP_USE_ABC "Build boop with ABC integration" ON)
@@ -138,10 +136,16 @@ target_link_libraries(boop_helo PUBLIC
 )
 
 if(BOOP_BUILD_PROGRAMS)
+  add_executable(fast programs/fast.cpp)
+  target_link_libraries(fast PRIVATE
+    boop::fast
+  )
+
   add_executable(helo programs/helo.cpp)
   target_link_libraries(helo PRIVATE
     boop::helo
   )
 endif()
 
+enable_testing()
 add_subdirectory(test)

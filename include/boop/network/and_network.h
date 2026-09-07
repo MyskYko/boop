@@ -6,6 +6,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <queue>
 #include <set>
 #include <utility>
 #include <vector>
@@ -146,6 +147,7 @@ public:
   bool TrivialCollapse();
   int TrivialDecompose(int nId, int nFanins);
   void TrivialDecompose(int nId);
+  void BalancedDecompose();
   void SortFanins(int nId, const std::vector<int> &vIndices);
   template <typename Func> void SortFanins(int nId, const Func &cost);
   std::pair<std::vector<int>, std::vector<bool>>
@@ -179,6 +181,11 @@ private:
                      // treated as const-1
   std::vector<int> vRefs_; // reference count (number of fanouts)
 
+  // TODO: update cached levels incrementally when applying network actions.
+  mutable bool fLevelsValid_;
+  mutable int nMaxLevel_;
+  mutable std::vector<int> vLevels_;
+
   // traversal state
   bool fLockTrav_;
   unsigned uTrav_;
@@ -202,6 +209,7 @@ private:
 
   // helpers
   int CreateNode();
+  void ComputeLevels() const;
   void SortInts(std::list<int>::iterator it);
   unsigned StartTraversal(int n = 1);
   void EndTraversal();
@@ -220,14 +228,16 @@ private:
 // lifecycle
 
 inline AndNetwork::AndNetwork()
-    : nNodes_(0), fLockTrav_(false), uTrav_(0), fPropagating_(false) {
+    : nNodes_(0), fLevelsValid_(false), nMaxLevel_(0), fLockTrav_(false),
+      uTrav_(0), fPropagating_(false) {
   vvFaninEdges_.emplace_back();
   vRefs_.push_back(0);
   nNodes_++;
 }
 
 inline AndNetwork::AndNetwork(const AndNetwork &other)
-    : fLockTrav_(false), uTrav_(0), fPropagating_(false) {
+    : fLevelsValid_(false), nMaxLevel_(0), fLockTrav_(false), uTrav_(0),
+      fPropagating_(false) {
   Copy(other);
 }
 
@@ -243,6 +253,9 @@ inline void AndNetwork::Clear(bool fClearNetwork, bool fClearCallbacks,
     sInts_.clear();
     vvFaninEdges_.clear();
     vRefs_.clear();
+    fLevelsValid_ = false;
+    nMaxLevel_ = 0;
+    vLevels_.clear();
     fLockTrav_ = false;
     uTrav_ = 0;
     vTrav_.clear();
@@ -265,6 +278,7 @@ inline void AndNetwork::Reserve(int nReserve) {
 }
 
 inline int AndNetwork::AddPi() {
+  fLevelsValid_ = false;
   vPis_.push_back(nNodes_);
   vvFaninEdges_.emplace_back();
   vRefs_.push_back(0);
@@ -275,6 +289,7 @@ inline int AndNetwork::AddPi() {
 inline int AndNetwork::AddAnd(int nId0, int nId1, bool fCompl0, bool fCompl1) {
   assert(nId0 >= 0 && nId0 < nNodes_);
   assert(nId1 >= 0 && nId1 < nNodes_);
+  fLevelsValid_ = false;
   // TODO: it is a philosophical question whether to allow dangling nodes or not
   assert(nId0 != nId1);
   assert(!check_int_max(nNodes_));
@@ -291,6 +306,7 @@ inline int AndNetwork::AddAnd(int nId0, int nId1, bool fCompl0, bool fCompl1) {
 inline int AndNetwork::AddAnd(const std::vector<int> &vFanins,
                               const std::vector<bool> &vCompls) {
   assert(vFanins.size() == vCompls.size());
+  fLevelsValid_ = false;
   assert(!check_int_max(nNodes_));
   lInts_.push_back(nNodes_);
   sInts_.insert(nNodes_);
@@ -306,6 +322,7 @@ inline int AndNetwork::AddAnd(const std::vector<int> &vFanins,
 
 inline int AndNetwork::AddPo(int nId, bool fCompl) {
   assert(nId >= 0 && nId < nNodes_);
+  fLevelsValid_ = false;
   assert(!check_int_max(nNodes_));
   vPos_.push_back(nNodes_);
   vRefs_[nId]++;
@@ -340,22 +357,26 @@ inline int AndNetwork::GetNumInts() const { return int_size(lInts_); }
 
 inline int AndNetwork::GetNumPos() const { return int_size(vPos_); }
 
-inline int AndNetwork::GetNumLevels() const {
-  int nMaxLevel = 0;
-  std::vector<int> vLevels(nNodes_);
+inline void AndNetwork::ComputeLevels() const {
+  if (fLevelsValid_) {
+    return;
+  }
+  nMaxLevel_ = 0;
+  vLevels_.assign(nNodes_, 0);
   for (int nId : lInts_) {
     for (int nFaninEdge : vvFaninEdges_[nId]) {
       int nFi = Edge2Node(nFaninEdge);
-      if (vLevels[nId] < vLevels[nFi]) {
-        vLevels[nId] = vLevels[nFi];
-      }
+      vLevels_[nId] = std::max(vLevels_[nId], vLevels_[nFi]);
     }
-    vLevels[nId] += 1;
-    if (nMaxLevel < vLevels[nId]) {
-      nMaxLevel = vLevels[nId];
-    }
+    vLevels_[nId]++;
+    nMaxLevel_ = std::max(nMaxLevel_, vLevels_[nId]);
   }
-  return nMaxLevel;
+  fLevelsValid_ = true;
+}
+
+inline int AndNetwork::GetNumLevels() const {
+  ComputeLevels();
+  return nMaxLevel_;
 }
 
 inline int AndNetwork::GetConst0() const { return 0; }
@@ -1547,6 +1568,68 @@ inline void AndNetwork::TrivialDecompose(int nId) {
   }
 }
 
+inline void AndNetwork::BalancedDecompose() {
+  ComputeLevels();
+  nMaxLevel_ = 0;
+  const std::list<int> lInts = lInts_;
+  for (int nId : lInts) {
+    using LevelEdge = std::pair<int, int>;
+    std::priority_queue<LevelEdge, std::vector<LevelEdge>,
+                        std::greater<LevelEdge>>
+        fanins;
+    std::map<int, int> mIndices;
+    for (int nIdx = 0; nIdx < GetNumFanins(nId); nIdx++) {
+      int nFaninEdge = vvFaninEdges_[nId][nIdx];
+      fanins.emplace(vLevels_[Edge2Node(nFaninEdge)], nFaninEdge);
+      assert(mIndices.emplace(nFaninEdge, nIdx).second);
+    }
+    while (GetNumFanins(nId) > 2) {
+      int nFaninEdge0 = fanins.top().second;
+      fanins.pop();
+      int nFaninEdge1 = fanins.top().second;
+      fanins.pop();
+      bool fSorted = false;
+      auto MoveFanin = [&](int nFaninEdge, int nNewIdx) {
+        int nOldIdx = mIndices.at(nFaninEdge);
+        if (nOldIdx != nNewIdx) {
+          int nOtherEdge = vvFaninEdges_[nId][nNewIdx];
+          std::swap(vvFaninEdges_[nId][nOldIdx],
+                    vvFaninEdges_[nId][nNewIdx]);
+          mIndices[nFaninEdge] = nNewIdx;
+          mIndices[nOtherEdge] = nOldIdx;
+          fSorted = true;
+        }
+      };
+      MoveFanin(nFaninEdge0, GetNumFanins(nId) - 2);
+      MoveFanin(nFaninEdge1, GetNumFanins(nId) - 1);
+      if (fSorted) {
+        Action action;
+        action.type = SORT_FANINS;
+        action.nId = nId;
+        TakenAction(action);
+      }
+      int nNewFi = TrivialDecompose(nId, 2);
+      mIndices.erase(nFaninEdge0);
+      mIndices.erase(nFaninEdge1);
+      int nNewFaninEdge = Node2Edge(nNewFi, false);
+      assert(mIndices.emplace(nNewFaninEdge, GetNumFanins(nId) - 1).second);
+      vLevels_.resize(nNodes_);
+      vLevels_[nNewFi] =
+          std::max(vLevels_[GetFanin(nNewFi, 0)],
+                   vLevels_[GetFanin(nNewFi, 1)]) +
+          1;
+      fanins.emplace(vLevels_[nNewFi], nNewFaninEdge);
+    }
+    vLevels_[nId] = 0;
+    ForEachFanin(nId, [&](int nFi) {
+      vLevels_[nId] = std::max(vLevels_[nId], vLevels_[nFi]);
+    });
+    vLevels_[nId]++;
+    nMaxLevel_ = std::max(nMaxLevel_, vLevels_[nId]);
+  }
+  fLevelsValid_ = true;
+}
+
 inline void AndNetwork::SortFanins(int nId, const std::vector<int> &vIndices) {
   assert(vIndices.size() == vvFaninEdges_[nId].size());
   std::vector<int> vFaninEdges = vvFaninEdges_[nId];
@@ -1980,9 +2063,16 @@ inline void AndNetwork::Copy(const AndNetwork &from) {
   sInts_ = from.sInts_;
   vvFaninEdges_ = from.vvFaninEdges_;
   vRefs_ = from.vRefs_;
+  fLevelsValid_ = from.fLevelsValid_;
+  nMaxLevel_ = from.nMaxLevel_;
+  vLevels_ = from.vLevels_;
 }
 
 inline void AndNetwork::TakenAction(const Action &action) const {
+  if (action.type != SORT_FANINS && action.type != SAVE &&
+      action.type != POP_BACK) {
+    fLevelsValid_ = false;
+  }
   for (const Callback &callback : vCallbacks_) {
     callback(action);
   }
