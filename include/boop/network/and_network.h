@@ -206,6 +206,7 @@ private:
   }
   int Edge2Node(int nEdge) const { return nEdge >> 1; }
   bool EdgeIsCompl(int nEdge) const { return nEdge & 1; }
+  int ComplEdge(int nEdge) const { return nEdge ^ 1; }
 
   // helpers
   int CreateNode();
@@ -290,8 +291,6 @@ inline int AndNetwork::AddAnd(int nId0, int nId1, bool fCompl0, bool fCompl1) {
   assert(nId0 >= 0 && nId0 < nNodes_);
   assert(nId1 >= 0 && nId1 < nNodes_);
   fLevelsValid_ = false;
-  // TODO: it is a philosophical question whether to allow dangling nodes or not
-  assert(nId0 != nId1);
   assert(!check_int_max(nNodes_));
   lInts_.push_back(nNodes_);
   sInts_.insert(nNodes_);
@@ -1428,7 +1427,6 @@ inline void AndNetwork::RemoveConst(int nId) {
 }
 
 inline void AndNetwork::AddFanin(int nId, int nFi, bool fCompl) {
-  assert(FindFanin(nId, nFi) == -1);     // no duplication
   assert(nFi != GetConst0() || !fCompl); // no const-1
   Action action;
   action.type = ADD_FANIN;
@@ -1450,6 +1448,38 @@ inline void AndNetwork::AddFanin(int nId, int nFi, bool fCompl) {
 }
 
 inline bool AndNetwork::TrivialCollapse(int nId) {
+  std::set<int> sFaninEdges;
+  for (int nIdx = 0; nIdx < GetNumFanins(nId);) {
+    int nFaninEdge = vvFaninEdges_[nId][nIdx];
+    if (sFaninEdges.count(nFaninEdge)) {
+      Action action;
+      action.type = DEDUPLICATE;
+      action.nId = nId;
+      action.nIdx = nIdx;
+      action.nFi = Edge2Node(nFaninEdge);
+      action.fCompl = EdgeIsCompl(nFaninEdge);
+      vRefs_[action.nFi]--;
+      vvFaninEdges_[nId].erase(vvFaninEdges_[nId].begin() + nIdx);
+      TakenAction(action);
+    } else if (sFaninEdges.count(ComplEdge(nFaninEdge))) {
+      Action action;
+      action.type = TRIVIAL_COLLAPSE;
+      action.nId = nId;
+      action.nIdx = nIdx;
+      action.nFi = Edge2Node(nFaninEdge);
+      action.fCompl = EdgeIsCompl(nFaninEdge);
+      action.vFanins.push_back(GetConst0());
+      action.vIndices.push_back(-1);
+      vRefs_[action.nFi]--;
+      vRefs_[GetConst0()]++;
+      vvFaninEdges_[nId][nIdx] = Node2Edge(GetConst0(), false);
+      TakenAction(action);
+      return true;
+    } else {
+      sFaninEdges.insert(nFaninEdge);
+      nIdx++;
+    }
+  }
   for (int nIdx = 0; nIdx < GetNumFanins(nId);) {
     int nFaninEdge = vvFaninEdges_[nId][nIdx];
     int nFi = Edge2Node(nFaninEdge);
@@ -1464,30 +1494,44 @@ inline bool AndNetwork::TrivialCollapse(int nId) {
       bool fConst0 = false;
       auto it = vvFaninEdges_[nId].begin() + nIdx;
       it = vvFaninEdges_[nId].erase(it);
-      ForEachFanin<true, true, false>(
-          nFi, [&](int nIdx2, int nFi2, bool fCompl2) {
-            int nIdx3 = FindFanin(nId, nFi2);
-            if (nIdx3 == -1) {
-              // no duplication
-              it = vvFaninEdges_[nId].insert(it, Node2Edge(nFi2, fCompl2));
-              ++it;
-              action.vFanins.push_back(nFi2);
-              action.vIndices.push_back(nIdx2);
-            } else if (fCompl2 != GetCompl(nId, nIdx3)) {
-              // duplication with different polarity, add const-0
-              vRefs_[nFi2]--;
-              vRefs_[GetConst0()]++;
-              it = vvFaninEdges_[nId].insert(it, Node2Edge(GetConst0(), false));
-              ++it;
-              action.vFanins.push_back(GetConst0());
-              action.vIndices.push_back(nIdx2);
-              fConst0 = true;
-            } else {
-              // duplication with the same polarity
-              vRefs_[nFi2]--;
-              nIdx = 0; // need to start over
-            }
-          });
+      sFaninEdges.erase(nFaninEdge);
+      for (int nIdx2 = 0; nIdx2 < GetNumFanins(nFi);) {
+        int nFaninEdge2 = vvFaninEdges_[nFi][nIdx2];
+        int nFi2 = Edge2Node(nFaninEdge2);
+        bool fCompl2 = EdgeIsCompl(nFaninEdge2);
+        if (sFaninEdges.count(nFaninEdge2)) {
+          // duplication with the same polarity
+          Action action2;
+          action2.type = DEDUPLICATE;
+          action2.nId = nFi;
+          action2.nIdx = nIdx2;
+          action2.nFi = nFi2;
+          action2.fCompl = fCompl2;
+          vRefs_[nFi2]--;
+          vvFaninEdges_[nFi].erase(vvFaninEdges_[nFi].begin() + nIdx2);
+          TakenAction(action2);
+          nIdx = 0;
+        } else if (sFaninEdges.count(ComplEdge(nFaninEdge2))) {
+          // duplication with different polarity, add const-0
+          vRefs_[nFi2]--;
+          vRefs_[GetConst0()]++;
+          it = vvFaninEdges_[nId].insert(it, Node2Edge(GetConst0(), false));
+          ++it;
+          sFaninEdges.insert(Node2Edge(GetConst0(), false));
+          action.vFanins.push_back(GetConst0());
+          action.vIndices.push_back(nIdx2);
+          fConst0 = true;
+          nIdx2++;
+        } else {
+          // no duplication
+          it = vvFaninEdges_[nId].insert(it, nFaninEdge2);
+          ++it;
+          sFaninEdges.insert(nFaninEdge2);
+          action.vFanins.push_back(nFi2);
+          action.vIndices.push_back(nIdx2);
+          nIdx2++;
+        }
+      }
       vRefs_[nFi] = 0;
       vvFaninEdges_[nFi].clear();
       auto itFi = std::find(lInts_.begin(), lInts_.end(), nFi);
@@ -1580,8 +1624,8 @@ inline void AndNetwork::BalancedDecompose() {
     std::map<int, int> mIndices;
     for (int nIdx = 0; nIdx < GetNumFanins(nId); nIdx++) {
       int nFaninEdge = vvFaninEdges_[nId][nIdx];
+      mIndices.emplace(nFaninEdge, nIdx);
       fanins.emplace(vLevels_[Edge2Node(nFaninEdge)], nFaninEdge);
-      assert(mIndices.emplace(nFaninEdge, nIdx).second);
     }
     while (GetNumFanins(nId) > 2) {
       int nFaninEdge0 = fanins.top().second;
@@ -1612,7 +1656,7 @@ inline void AndNetwork::BalancedDecompose() {
       mIndices.erase(nFaninEdge0);
       mIndices.erase(nFaninEdge1);
       int nNewFaninEdge = Node2Edge(nNewFi, false);
-      assert(mIndices.emplace(nNewFaninEdge, GetNumFanins(nId) - 1).second);
+      mIndices.emplace(nNewFaninEdge, GetNumFanins(nId) - 1);
       vLevels_.resize(nNodes_);
       vLevels_[nNewFi] =
           std::max(vLevels_[GetFanin(nNewFi, 0)],

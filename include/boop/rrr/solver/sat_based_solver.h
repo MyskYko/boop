@@ -451,6 +451,8 @@ void SatBasedSolver<Ntk, Sol>::ActionCallback(const Action &action) {
       fUpdate_ = true;
     }
     break;
+  case DEDUPLICATE:
+    break;
   case TRIVIAL_COLLAPSE:
     break;
   case TRIVIAL_DECOMPOSE:

@@ -21,6 +21,7 @@ enum ActionType {
   REMOVE_BUFFER,
   REMOVE_CONST,
   ADD_FANIN,
+  DEDUPLICATE,
   TRIVIAL_COLLAPSE,
   TRIVIAL_DECOMPOSE,
   TRIVIAL_SHARE,
@@ -55,6 +56,8 @@ static inline char const *GetActionTypeCstr(Action const &action) {
     return "remove const";
   case ADD_FANIN:
     return "add fanin";
+  case DEDUPLICATE:
+    return "deduplicate";
   case TRIVIAL_COLLAPSE:
     return "trivial collapse";
   case TRIVIAL_DECOMPOSE:

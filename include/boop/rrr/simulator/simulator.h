@@ -492,6 +492,8 @@ void Simulator<Ntk>::ActionCallback(const Action &action) {
       sUpdates_.insert(action.nId);
     }
     break;
+  case DEDUPLICATE:
+    break;
   case TRIVIAL_COLLAPSE:
     break;
   case TRIVIAL_DECOMPOSE:

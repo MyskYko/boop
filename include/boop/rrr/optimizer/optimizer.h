@@ -467,6 +467,8 @@ void Optimizer<Ntk, Ana>::ActionCallback(const Action &action) {
       nTarget_ = -1;
     }
     break;
+  case DEDUPLICATE:
+    break;
   case TRIVIAL_COLLAPSE:
     break;
   case TRIVIAL_DECOMPOSE:
